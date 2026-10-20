@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Umpire Assessment — Field Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+  :root{
+    --navy:#0B1F3A;
+    --navy-2:#122c50;
+    --pitch:#F4F2EA;
+    --line:#d9d4c4;
+    --gold:#C9A227;
+    --red:#B3282D;
+    --ink:#0B1F3A;
+    --muted:#5b6472;
+    --card:#ffffff;
+    --green:#2F6B4F;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--pitch);
+    color:var(--ink);
+    font-family:'Barlow', -apple-system, sans-serif;
+    padding-bottom:100px;
+  }
+  h1,h2,h3,.disp{
+    font-family:'Barlow Condensed', sans-serif;
+    letter-spacing:.02em;
+  }
+  header.top{
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff;
+    padding:18px 20px 22px;
+    position:sticky; top:0; z-index:30;
+    box-shadow:0 4px 14px rgba(11,31,58,.25);
+  }
+  header.top .eyebrow{
+    font-size:11px; text-transform:uppercase; letter-spacing:.16em;
+    color:var(--gold); font-weight:600; margin-bottom:4px;
+  }
+  header.top h1{
+    font-size:26px; font-weight:700; margin:0; line-height:1;
+    display:flex; align-items:center; gap:10px;
+  }
+  header.top h1 .bar{width:6px; height:22px; background:var(--red); display:inline-block; border-radius:1px;}
+  header.top .sub{font-size:13px; color:#c9d2e0; margin-top:6px;}
+
+  .wrap{max-width:640px; margin:0 auto; padding:16px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(11,31,58,.06);
+  }
+  .card h2{
+    font-size:15px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--navy); margin:0 0 12px 0; font-weight:700;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h2::before{content:''; width:4px; height:16px; background:var(--gold); display:inline-block; border-radius:1px;}
+
+  label{
+    display:block; font-size:12.5px; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.04em; margin:12px 0 5px;
+  }
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=date], select, textarea{
+    width:100%; padding:12px 12px; font-size:16px; font-family:inherit;
+    border:1.5px solid var(--line); border-radius:9px; background:#fdfcf9;
+    color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{
+    outline:none; border-color:var(--navy); background:#fff;
+  }
+  textarea{min-height:90px; resize:vertical;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .crit{margin-bottom:16px;}
+  .crit-name{font-size:14.5px; font-weight:600; color:var(--ink); margin-bottom:8px;}
+  .def-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:19px; height:19px; border-radius:50%; border:1.5px solid var(--navy);
+    background:transparent; color:var(--navy); font-size:11px; font-weight:700;
+    cursor:pointer; padding:0; vertical-align:middle; margin-left:2px; line-height:1;
+  }
+  .def-text{
+    display:none; font-size:12.5px; line-height:1.45; color:var(--muted);
+    background:#f3f1ea; border-left:3px solid var(--gold); border-radius:6px;
+    padding:9px 11px; margin:0 0 10px 0;
+  }
+  .def-text.open{display:block;}
+  .pills{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+  .pill{
+    border:1.5px solid var(--line); background:#fdfcf9; border-radius:8px;
+    padding:10px 2px; text-align:center; font-size:11px; font-weight:600;
+    color:var(--muted); cursor:pointer; user-select:none; line-height:1.15;
+  }
+  .pill .num{display:block; font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; margin-bottom:2px;}
+  .pill.sel-1{background:#B3282D; border-color:#B3282D; color:#fff;}
+  .pill.sel-2{background:#D97A3F; border-color:#D97A3F; color:#fff;}
+  .pill.sel-3{background:var(--gold); border-color:var(--gold); color:#fff;}
+  .pill.sel-4{background:#6B9B5E; border-color:#6B9B5E; color:#fff;}
+  .pill.sel-5{background:var(--green); border-color:var(--green); color:#fff;}
+
+  .score-band{
+    display:flex; align-items:center; gap:16px;
+    background:var(--navy); color:#fff; border-radius:12px; padding:16px;
+    margin-top:4px;
+  }
+  .score-num{
+    font-family:'Barlow Condensed',sans-serif; font-size:44px; font-weight:700;
+    line-height:1; min-width:74px; text-align:center;
+  }
+  .score-text{font-size:13px; color:#dbe2ee; line-height:1.35;}
+  .score-text b{color:#fff;}
+
+  .btn{
+    display:block; width:100%; padding:15px; font-size:15px; font-weight:700;
+    border:none; border-radius:10px; cursor:pointer; font-family:'Barlow Condensed',sans-serif;
+    text-transform:uppercase; letter-spacing:.05em;
+  }
+  .btn-primary{background:var(--navy); color:#fff;}
+  .btn-primary:active{background:var(--navy-2);}
+  .btn-gold{background:var(--gold); color:var(--navy);}
+  .btn-ghost{background:transparent; color:var(--navy); border:1.5px solid var(--navy);}
+
+  .queue-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px;
+    background:#fdfcf9;
+  }
+  .qi-left{display:flex; align-items:center; gap:10px;}
+  .qi-badge{
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; flex:none;
+  }
+  .qi-name{font-weight:600; font-size:14.5px;}
+  .qi-sub{font-size:11.5px; color:var(--muted); margin-top:1px;}
+  .qi-remove{background:none; border:none; color:var(--red); font-size:13px; font-weight:600; cursor:pointer; padding:6px;}
+
+  .empty{
+    text-align:center; padding:26px 10px; color:var(--muted); font-size:13.5px;
+  }
+  .empty .icn{font-size:26px; display:block; margin-bottom:6px;}
+
+  footer.bar{
+    position:fixed; bottom:0; left:0; right:0;
+    background:#fff; border-top:1px solid var(--line);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 14px rgba(11,31,58,.08);
+    display:flex; gap:10px; z-index:30;
+  }
+  footer.bar .btn{margin:0;}
+  .count-chip{
+    position:absolute; top:-9px; right:-9px; background:var(--red); color:#fff;
+    font-size:11px; font-weight:700; border-radius:999px; min-width:18px; height:18px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px;
+  }
+  .rel{position:relative;}
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    background:var(--navy); color:#fff; padding:10px 18px; border-radius:999px;
+    font-size:13.5px; font-weight:600; box-shadow:0 4px 14px rgba(11,31,58,.3);
+    opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:40;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+  .hint{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4;}
+  .check-row{
+    display:flex; align-items:center; gap:10px; margin-top:12px;
+    padding:11px 12px; border:1.5px solid var(--line); border-radius:9px;
+    background:#fdfcf9; cursor:pointer; text-transform:none; font-size:13.5px;
+    font-weight:500; color:var(--ink);
+  }
+  .check-row input[type=checkbox]{
+    width:20px; height:20px; flex:none; accent-color:var(--navy); cursor:pointer;
+  }
+  .check-row:has(input:checked){border-color:var(--green); background:#f2f8f4;}
+  .shared-tag{
+    display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700;
+    padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;
+  }
+  .shared-yes{background:#e5f2ea; color:var(--green);}
+  .shared-no{background:#f5efe0; color:#8a6d1a;}
+
+  .toggle-row{
+    display:flex; align-items:center; gap:12px; margin-top:14px;
+    padding:11px 12px; border:1.5px solid var(--line); border-radius:9px; background:#fdfcf9;
+  }
+  .toggle-switch{position:relative; display:inline-block; width:44px; height:26px; flex:none;}
+  .toggle-switch input{opacity:0; width:0; height:0;}
+  .toggle-slider{
+    position:absolute; cursor:pointer; inset:0; background:#c8cdd6;
+    border-radius:999px; transition:.18s;
+  }
+  .toggle-slider::before{
+    content:''; position:absolute; height:20px; width:20px; left:3px; top:3px;
+    background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.25);
+  }
+  .toggle-switch input:checked + .toggle-slider{background:var(--red);}
+  .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);}
+  .toggle-label{display:flex; flex-direction:column; gap:1px;}
+  .tl-title{font-size:13.5px; font-weight:600; color:var(--ink);}
+  .tl-sub{font-size:11.5px; color:var(--muted);}
+  .private-wrap textarea{border-color:#e0b3b5; background:#fdf7f7;}
+  .toggle-row.nested{
+    margin-top:14px; margin-left:14px; width:calc(100% - 14px);
+    border-color:#e0dccb; background:#f8f6ef;
+  }
+  .private-tag{
+    display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700;
+    padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;
+    background:#f5e6e6; color:var(--red);
+  }
+  .areas-tag{
+    display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700;
+    padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;
+    background:#f3ead2; color:#8a6d1a;
+  }
+  .slot-tabs{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;
+  }
+  .slot-tab{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:12px 8px; border-radius:12px; border:1.5px solid var(--line);
+    background:#fdfcf9; cursor:pointer; font-family:inherit;
+  }
+  .slot-tab .st-label{
+    font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:700;
+    color:var(--navy); text-transform:uppercase; letter-spacing:.04em;
+  }
+  .slot-tab .st-sub{font-size:11.5px; color:var(--muted);}
+  .slot-tab.active{
+    border-color:var(--navy); background:var(--navy); box-shadow:0 3px 10px rgba(11,31,58,.25);
+  }
+  .slot-tab.active .st-label, .slot-tab.active .st-sub{color:#fff;}
+  .slot-tab.active .st-sub{color:#c9d2e0;}
+  .slot-tab.done{border-color:var(--green);}
+  .slot-tab.done.active{background:var(--green); border-color:var(--green);}
+
+  .zone-grid{display:flex; flex-direction:column; gap:3px; position:relative;}
+  .zone-overlay{
+    position:absolute; inset:0; width:100%; height:100%;
+    pointer-events:none; z-index:5;
+  }
+  .zone-row{display:grid; gap:3px;}
+  .zone-row.top{grid-template-columns:1fr; height:52px;}
+  .zone-row.mid{grid-template-columns:1fr 1fr; height:90px;}
+  .zone-row.bottom{grid-template-columns:20% 17.6% 24.8% 17.6% 20%; height:180px;}
+  .zone-mid-col{display:flex; flex-direction:column; gap:3px; height:100%;}
+  .zone-mid-col .zone-cell:first-child{flex:0 0 50%;}
+  .zone-mid-col .zone-cell:last-child{flex:0 0 50%;}
+  .zone-cell{
+    position:relative; border:1px solid rgba(11,31,58,.18); border-radius:5px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; overflow:hidden; user-select:none; text-align:center; padding:2px;
+  }
+  .zone-cell .zn{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:19px; color:var(--navy); line-height:1;}
+  .zone-cell .zarrow{font-size:18px; color:var(--navy); line-height:1;}
+  .zone-cell .zl{font-size:9px; color:var(--muted); line-height:1.15; margin-top:2px;}
+  .zone-cell.z1{background:#f6d3d3;}
+  .zone-cell.z2{background:#dbe9de;}
+  .zone-cell.z3{background:#dae7f4;}
+  .zone-cell.z4{background:#f5dbe6;}
+  .zone-cell.z5,.zone-cell.z8{background:#fdfcf9;}
+  .zone-cell.z6,.zone-cell.z7{background:#eceef0;}
+  .zone-cell.z9{background:#f4f2ea;}
+  .zone-cell:active{filter:brightness(0.94);}
+  .zcount{
+    position:absolute; top:3px; right:3px; background:var(--red); color:#fff;
+    font-size:10px; font-weight:700; border-radius:999px; min-width:16px; height:16px;
+    display:none; align-items:center; justify-content:center; padding:0 3px; z-index:2;
+  }
+  .zone-dot{
+    position:absolute; width:7px; height:7px; border-radius:50%;
+    background:rgba(179,40,45,.8); border:1px solid #fff;
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  .zone-summary{font-size:12.5px; color:var(--muted); margin:10px 2px 0; line-height:1.4;}
+  .zone-summary b{color:var(--ink);}
+  .zone-actions{display:flex; gap:8px; margin-top:10px;}
+  .zone-actions .btn{padding:11px; font-size:12.5px;}
+
+  /* ---------- OPENING SCREEN ---------- */
+  .start{
+    position:fixed; top:0; left:0; right:0; bottom:0; z-index:100; overflow-y:auto;
+    background:var(--pitch);
+  }
+  .start-head{
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff; padding:26px 20px 30px;
+  }
+  .start-head .eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--gold); font-weight:600; margin-bottom:6px;}
+  .start-head h1{font-size:30px; font-weight:700; margin:0; line-height:1; display:flex; align-items:center; gap:10px;}
+  .start-head h1 .bar{width:6px; height:24px; background:var(--red); display:inline-block; border-radius:1px;}
+  .start-head .sub{font-size:14px; color:#c9d2e0; margin-top:8px;}
+  .start-wrap{max-width:640px; margin:0 auto; padding:18px 16px 40px;}
+  .start-q{font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; margin:4px 2px 12px;}
+  .mode-card{
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    margin-bottom:12px; box-shadow:0 1px 3px rgba(11,31,58,.06); overflow:hidden;
+  }
+  .mode-card.open{border-color:var(--navy); box-shadow:0 4px 14px rgba(11,31,58,.14);}
+  .mode-top{display:flex; align-items:center; gap:14px; padding:16px; cursor:pointer;}
+  .mode-badge{
+    width:42px; height:42px; border-radius:10px; background:var(--navy); color:var(--gold);
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px;
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .mode-title{font-family:'Barlow Condensed',sans-serif; font-size:21px; font-weight:700; color:var(--navy); line-height:1.1;}
+  .mode-desc{font-size:13px; color:var(--muted); margin-top:3px; line-height:1.35;}
+  .mode-body{display:none; padding:0 16px 16px; border-top:1px solid var(--line);}
+  .mode-card.open .mode-body{display:block;}
+  .mode-body label{margin-top:14px;}
+  .file-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    border:1.5px dashed var(--navy); border-radius:10px; padding:14px; cursor:pointer;
+    font-weight:600; font-size:14px; color:var(--navy); background:#fdfcf9; text-align:center;
+  }
+  .file-btn input{display:none;}
+  .sched-status{font-size:12.5px; margin-top:8px; line-height:1.4;}
+  .sched-status.ok{color:var(--green); font-weight:600;}
+  .sched-status.err{color:var(--red); font-weight:600;}
+  .link-btn{background:none; border:none; padding:0; color:var(--navy); font-size:12.5px; font-weight:600; text-decoration:underline; cursor:pointer; font-family:inherit;}
+  .soon{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; padding:12px; border:1.5px solid var(--line); border-radius:10px;
+    background:#f3f1ea; color:var(--muted); font-size:13.5px; font-weight:600;
+  }
+  .soon span.tag{font-size:10.5px; background:#e5e1d3; color:#6b6558; padding:2px 8px; border-radius:999px; font-weight:700; letter-spacing:.04em;}
+  .start-go{margin-top:14px;}
+  .start-go:disabled{opacity:.4; cursor:not-allowed;}
+
+  /* ---------- MODE BAR + GAME PICKER ---------- */
+  .modebar{
+    margin-top:10px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:12.5px; color:#dbe2ee;
+  }
+  .modebar b{color:#fff;}
+  .modebar button{
+    background:transparent; border:1px solid #6f82a3; color:#fff; border-radius:999px;
+    font-size:11.5px; font-weight:600; padding:4px 11px; cursor:pointer; font-family:inherit; flex:none;
+  }
+  .picker-card{border-color:var(--gold); background:#fffdf4;}
+  .picker-card select{margin-bottom:0;}
+  .picker-note{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="start" id="startScreen">
+  <div class="start-head">
+    <div class="eyebrow">USA Field Hockey · Umpire Manager</div>
+    <h1><span class="bar"></span>Umpire Assessment</h1>
+    <div class="sub">Pick how you're working today. You can change it anytime.</div>
+  </div>
+  <div class="start-wrap">
+    <div class="start-q">What are you assessing?</div>
+
+    <div class="mode-card" id="mode_tournament">
+      <div class="mode-top" data-mode="tournament">
+        <div class="mode-badge">A</div>
+        <div>
+          <div class="mode-title">Tournament with a schedule</div>
+          <div class="mode-desc">Pick a field and game, and the umpires fill in for you.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Event name</label>
+        <input type="text" id="s_event_t" placeholder="e.g. 2026 USAFHL Adult Club Championships">
+        <label>Schedule</label>
+        <label class="file-btn" for="s_file">
+          <span id="s_file_label">Upload schedule (.xlsx or .csv)</span>
+          <input type="file" id="s_file" accept=".xlsx,.xls,.csv">
+        </label>
+        <div class="sched-status" id="s_status"></div>
+        <div style="margin-top:8px;"><button type="button" class="link-btn" id="s_template">Download a sample schedule to see the format</button></div>
+        <div class="soon"><span>Connect to Coordinate</span><span class="tag">COMING SOON</span></div>
+        <button type="button" class="btn btn-primary start-go" id="go_tournament" disabled>Start Tournament Mode</button>
+      </div>
+    </div>
+
+    <div class="mode-card" id="mode_event">
+      <div class="mode-top" data-mode="event">
+        <div class="mode-badge">B</div>
+        <div>
+          <div class="mode-title">Event without a schedule</div>
+          <div class="mode-desc">Smaller event. You'll enter the field, time and umpires for each game.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Event name</label>
+        <input type="text" id="s_event_e" placeholder="e.g. Regional Showcase">
+        <button type="button" class="btn btn-primary start-go" id="go_event">Start Event Mode</button>
+      </div>
+    </div>
+
+    <div class="mode-card" id="mode_game">
+      <div class="mode-top" data-mode="game">
+        <div class="mode-badge">C</div>
+        <div>
+          <div class="mode-title">Single game</div>
+          <div class="mode-desc">One match, such as a college game. Just the game and the umpires.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Competition (optional)</label>
+        <input type="text" id="s_event_g" placeholder="e.g. NCAA Division I regular season">
+        <button type="button" class="btn btn-primary start-go" id="go_game">Start Single Game</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="top">
+  <div class="eyebrow">USA Field Hockey · Umpire Manager</div>
+  <h1><span class="bar"></span>Umpire Assessment</h1>
+  <div class="modebar">
+    <span id="modeLabel">—</span>
+    <button type="button" id="changeModeBtn">Change</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card picker-card" id="pickerCard" style="display:none;">
+    <h2>Select Game</h2>
+    <div id="pickDateWrap" style="display:none;">
+      <label>Date</label>
+      <select id="pick_date"></select>
+    </div>
+    <label>Field</label>
+    <select id="pick_field"></select>
+    <label>Game</label>
+    <select id="pick_game"></select>
+    <div class="picker-note" id="pickNote">Choosing a game fills in the field, time, teams and both umpires below. You can still edit anything.</div>
+  </div>
+
+  <div class="card">
+    <h2>Event Details</h2>
+    <div class="row2">
+      <div>
+        <label>Event</label>
+        <input type="text" id="f_event" placeholder="e.g. 2026 Disney">
+      </div>
+      <div>
+        <label>Assessor's Name</label>
+        <input type="text" id="f_assessor" placeholder="Your name">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Level / Age Division</label>
+        <input type="text" id="f_level" placeholder="e.g. U16 Open">
+      </div>
+      <div>
+        <label>Date(s)</label>
+        <input type="date" id="f_date">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Field Number</label>
+        <input type="text" id="f_field" placeholder="e.g. Field 3">
+      </div>
+      <div>
+        <label>Time of Game</label>
+        <input type="time" id="f_time">
+      </div>
+    </div>
+    <label>Teams</label>
+    <input type="text" id="f_teams" placeholder="e.g. Team A vs Team B">
+    <div class="hint">These carry over between assessments this session — update anytime.</div>
+  </div>
+
+  <div class="slot-tabs" id="slotTabs"></div>
+
+  <div class="card">
+    <h2>Umpire</h2>
+    <label>Umpire's Name</label>
+    <input type="text" id="f_name" placeholder="Full name">
+    <label>Umpire's Current Panel</label>
+    <select id="f_panel">
+      <option value="Starter Umpire Panel">Starter Umpire Panel</option>
+      <option value="Local Umpire Panel">Local Umpire Panel</option>
+      <option value="Regional Umpire Panel">Regional Umpire Panel</option>
+      <option value="National Umpire Panel">National Umpire Panel</option>
+      <option value="International Umpire Panel">International Umpire Panel</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h2>Performance Criteria</h2>
+    <div id="criteria"></div>
+
+    <div class="score-band">
+      <div class="score-num" id="scoreNum">–</div>
+      <div class="score-text" id="scoreText">Rate all six criteria to calculate a Performance Mark.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Comments to Umpire</h2>
+    <textarea id="f_comments" placeholder="What you'll actually say to the umpire..."></textarea>
+
+    <div class="toggle-row" id="toggleRow">
+      <label class="toggle-switch">
+        <input type="checkbox" id="f_hasPrivate">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="toggle-label">
+        <span class="tl-title">Add private notes</span>
+        <span class="tl-sub">Not shared with the umpire — for your records only</span>
+      </div>
+    </div>
+
+    <div id="privateWrap" class="private-wrap" style="display:none;">
+      <label style="margin-top:14px;">Private Notes</label>
+      <textarea id="f_private" placeholder="The franker version — panel patterns, context, whatever's not fit to hand over as-is..."></textarea>
+    </div>
+
+    <div class="toggle-row" id="areasToggleRow">
+      <label class="toggle-switch">
+        <input type="checkbox" id="f_hasAreas">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="toggle-label">
+        <span class="tl-title">Areas of interest</span>
+        <span class="tl-sub">Umpire-specific zones to flag or watch</span>
+      </div>
+    </div>
+
+    <div id="areasWrap" class="private-wrap" style="display:none;">
+      <div class="hint" style="margin:14px 0 10px;">Tap the pitch where something notable happened for this umpire.</div>
+      <div id="zoneGrid" class="zone-grid"></div>
+      <div class="zone-summary" id="zoneSummary"></div>
+      <div class="zone-actions">
+        <button type="button" class="btn btn-ghost" id="undoTapBtn" style="flex:1;">Undo Last Tap</button>
+        <button type="button" class="btn btn-ghost" id="clearTapsBtn" style="flex:1;">Clear All Taps</button>
+      </div>
+      <button type="button" class="btn btn-gold" id="saveZoneImgBtn" style="margin-top:8px;">Save as Image</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="saveBtn" style="margin-bottom:14px;">Save Assessment</button>
+
+  <div class="card">
+    <h2>This Session</h2>
+    <div id="queue"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer class="bar">
+  <button class="btn btn-ghost" id="clearBtn" style="flex:1;">Clear Form</button>
+  <button class="btn btn-ghost rel" id="exportBtn" style="flex:1;">
+    Export All
+    <span class="count-chip" id="chip" style="display:none;">0</span>
+  </button>
+  <button class="btn btn-gold" id="submitBtn" style="flex:1.5;">Send to Brian</button>
+</footer>
+
+<script>
+const CRITERIA = [
+  "Knowledge of Rules and Decision Making",
+  "Game Management and Control",
+  "Flow and Timing",
+  "Presentation and Professionalism",
+  "Communication, Cooperation, and Teamwork",
+  "Physical Fitness, Movement, and Positioning"
+];
+const RATING_LABELS = [
+  "Well Below Current Panel",
+  "Below Current Panel",
+  "At Current Panel",
+  "Above Current Panel",
+  "Well Above Current Panel"
+];
+const FEEDBACK_BANDS = [
+  {min:1, max:1.8, text:"Significant shortcomings and overall well below the standard expected of umpires on their current panel."},
+  {min:1.81, max:2.6, text:"Some shortcomings and overall not fully reaching the standard expected from umpires on their current panel."},
+  {min:2.61, max:3.4, text:"Consistently at the standard expected from umpires on their current panel."},
+  {min:3.41, max:4.2, text:"Better than the standard expected from umpires on their current panel."},
+  {min:4.21, max:5, text:"An exceptional standard, significantly better than the standard expected from umpires on their current panel."}
+];
+const PANEL_COLORS = {
+  "Starter Umpire Panel":"#8a94a6",
+  "Local Umpire Panel":"#5b7fae",
+  "Regional Umpire Panel":"#2F6B4F",
+  "National Umpire Panel":"#C9A227",
+  "International Umpire Panel":"#B3282D"
+};
+
+// Fill these in once Raps/Brian confirm the official criteria definitions.
+// A criterion only gets an "i" info button once its text here is non-empty —
+// so nothing changes on screen until real content lands.
+const DEFINITIONS = {
+  "Knowledge of Rules and Decision Making": "",
+  "Game Management and Control": "",
+  "Flow and Timing": "",
+  "Presentation and Professionalism": "",
+  "Communication, Cooperation, and Teamwork": "",
+  "Physical Fitness, Movement, and Positioning": ""
+};
+
+let slots = { 1: makeSlot(), 2: makeSlot() };
+let activeSlot = 1;
+let ratings = slots[1].ratings; // 0 = unset; kept as a live reference into the active slot
+let tallies = slots[1].tallies; // zone tap counts; also a live reference
+let tapLog = slots[1].tapLog;   // ordered log of taps, for undo + dot placement
+let queue = []; // saved assessments this session
+
+function makeSlot(){
+  return {
+    name:'', panel:'Starter Umpire Panel', schedRating:'', ratings:new Array(6).fill(0), comments:'',
+    hasPrivate:false, privateNotes:'',
+    hasAreas:false, tallies:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0}, tapLog:[]
+  };
+}
+
+const critWrap = document.getElementById('criteria');
+CRITERIA.forEach((label, i) => {
+  const def = (DEFINITIONS[label] || '').trim();
+  const div = document.createElement('div');
+  div.className = 'crit';
+  div.innerHTML = `
+    <div class="crit-name">${label}${def ? ` <button type="button" class="def-btn" data-idx="${i}">ⓘ</button>` : ''}</div>
+    ${def ? `<div class="def-text" id="def_${i}">${def}</div>` : ''}
+    <div class="pills" id="pills_${i}">
+      ${RATING_LABELS.map((rl, j) => `<div class="pill" data-crit="${i}" data-val="${j+1}">
+        <span class="num">${j+1}</span>${rl.replace(' Current Panel','')}
+      </div>`).join('')}
+    </div>`;
+  critWrap.appendChild(div);
+});
+
+critWrap.addEventListener('click', (e) => {
+  const defBtn = e.target.closest('.def-btn');
+  if (defBtn){
+    document.getElementById(`def_${defBtn.dataset.idx}`).classList.toggle('open');
+    return;
+  }
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  const critIdx = +pill.dataset.crit;
+  const val = +pill.dataset.val;
+  ratings[critIdx] = val;
+  document.querySelectorAll(`#pills_${critIdx} .pill`).forEach(p => {
+    p.classList.remove('sel-1','sel-2','sel-3','sel-4','sel-5');
+  });
+  pill.classList.add('sel-' + val);
+  updateScore();
+});
+
+function updateScore(){
+  const rated = ratings.filter(r => r > 0);
+  const scoreNum = document.getElementById('scoreNum');
+  const scoreText = document.getElementById('scoreText');
+  if (rated.length < 6){
+    scoreNum.textContent = '–';
+    scoreText.innerHTML = `Rate all six criteria to calculate a Performance Mark. <b>(${rated.length}/6 done)</b>`;
+    return;
+  }
+  const sum = ratings.reduce((a,b)=>a+b,0);
+  const mark = sum / 6;
+  const band = FEEDBACK_BANDS.find(b => mark >= b.min && mark <= b.max) || FEEDBACK_BANDS[2];
+  scoreNum.textContent = mark.toFixed(2);
+  scoreText.innerHTML = `<b>Performance Mark out of 5.</b> ${band.text}`;
+}
+
+// ---------- AREAS OF INTEREST (per-umpire zone tally) ----------
+const ZONE_NAMES = {
+  1:"In Front of Goals", 2:"Circle Near Side", 3:"Top of Circle", 4:"Circle Far Side",
+  5:"Sideline Near Side", 6:"Inside 23 Near Side", 7:"Inside 23 Far Side",
+  8:"Sideline Far Side", 9:"23 & Beyond"
+};
+
+function zoneCell(num, arrow){
+  return `<div class="zone-cell z${num}" data-zone="${num}">
+    ${arrow ? '<span class="zarrow">\u2191</span>' : `<span class="zn">${num}</span>`}
+    <span class="zl">${ZONE_NAMES[num]}</span>
+    <span class="zcount" id="zc_${num}">0</span>
+  </div>`;
+}
+
+document.getElementById('zoneGrid').innerHTML = `
+  <div class="zone-row top">${zoneCell(9, true)}</div>
+  <div class="zone-row mid">${zoneCell(6)}${zoneCell(7)}</div>
+  <div class="zone-row bottom">
+    ${zoneCell(5)}
+    ${zoneCell(2)}
+    <div class="zone-mid-col">${zoneCell(3)}${zoneCell(1)}</div>
+    ${zoneCell(4)}
+    ${zoneCell(8)}
+  </div>
+  <svg class="zone-overlay" viewBox="0 0 1000 328" preserveAspectRatio="none">
+    <path d="M201,328 A266,180 0 0,1 467,148 L533,148 A266,180 0 0,1 799,328" fill="none" stroke="var(--navy)" stroke-width="5" opacity="0.55"/>
+    <path d="M110,328 A357,242 0 0,1 467,86 L533,86 A357,242 0 0,1 890,328" fill="none" stroke="var(--navy)" stroke-width="3" stroke-dasharray="14 10" opacity="0.4"/>
+    <line x1="376" y1="308" x2="376" y2="328" stroke="var(--navy)" stroke-width="6" opacity="0.6"/>
+    <line x1="624" y1="308" x2="624" y2="328" stroke="var(--navy)" stroke-width="6" opacity="0.6"/>
+    <line x1="285" y1="312" x2="285" y2="328" stroke="var(--navy)" stroke-width="6" opacity="0.4"/>
+    <line x1="715" y1="312" x2="715" y2="328" stroke="var(--navy)" stroke-width="6" opacity="0.4"/>
+    <rect x="467" y="311" width="66" height="17" fill="none" stroke="var(--navy)" stroke-width="5" opacity="0.7"/>
+  </svg>
+`;
+
+document.getElementById('zoneGrid').addEventListener('click', (e) => {
+  const cell = e.target.closest('.zone-cell');
+  if (!cell) return;
+  const num = +cell.dataset.zone;
+  const rect = cell.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+  tallies[num]++;
+  tapLog.push({ zone:num, name:ZONE_NAMES[num], x, y });
+
+  const dot = document.createElement('div');
+  dot.className = 'zone-dot';
+  dot.style.left = x + '%';
+  dot.style.top = y + '%';
+  dot.dataset.seq = tapLog.length - 1;
+  cell.appendChild(dot);
+
+  const badge = document.getElementById('zc_' + num);
+  badge.textContent = tallies[num];
+  badge.style.display = 'flex';
+  updateZoneSummary();
+});
+
+document.getElementById('undoTapBtn').addEventListener('click', () => {
+  if (tapLog.length === 0) return;
+  const last = tapLog.pop();
+  tallies[last.zone]--;
+  const cell = document.querySelector(`.zone-cell[data-zone="${last.zone}"]`);
+  const dot = cell.querySelector(`.zone-dot[data-seq="${tapLog.length}"]`);
+  if (dot) dot.remove();
+  const badge = document.getElementById('zc_' + last.zone);
+  if (tallies[last.zone] > 0){ badge.textContent = tallies[last.zone]; }
+  else { badge.style.display = 'none'; badge.textContent = '0'; }
+  updateZoneSummary();
+});
+
+document.getElementById('clearTapsBtn').addEventListener('click', () => {
+  for (const k in tallies){ tallies[k] = 0; }
+  tapLog.length = 0;
+  document.querySelectorAll('.zone-dot').forEach(d => d.remove());
+  document.querySelectorAll('.zcount').forEach(b => { b.style.display = 'none'; b.textContent = '0'; });
+  updateZoneSummary();
+});
+
+function renderZoneState(){
+  // Redraw badges + dots + summary to match the active slot's tallies/tapLog.
+  document.querySelectorAll('.zone-dot').forEach(d => d.remove());
+  document.querySelectorAll('.zone-cell').forEach(cell => {
+    const num = +cell.dataset.zone;
+    const badge = document.getElementById('zc_' + num);
+    if (tallies[num] > 0){ badge.textContent = tallies[num]; badge.style.display = 'flex'; }
+    else { badge.textContent = '0'; badge.style.display = 'none'; }
+  });
+  tapLog.forEach((t, i) => {
+    const cell = document.querySelector(`.zone-cell[data-zone="${t.zone}"]`);
+    if (!cell) return;
+    const dot = document.createElement('div');
+    dot.className = 'zone-dot';
+    dot.style.left = t.x + '%';
+    dot.style.top = t.y + '%';
+    dot.dataset.seq = i;
+    cell.appendChild(dot);
+  });
+  updateZoneSummary();
+}
+
+function updateZoneSummary(){
+  const el = document.getElementById('zoneSummary');
+  const total = tapLog.length;
+  if (total === 0){
+    el.textContent = 'No incidents logged yet — tap a zone above to record one.';
+    return;
+  }
+  let busiest = 1, max = 0;
+  for (const k in tallies){ if (tallies[k] > max){ max = tallies[k]; busiest = k; } }
+  el.innerHTML = `<b>${total}</b> incident${total > 1 ? 's' : ''} logged for this umpire · busiest: <b>${ZONE_NAMES[busiest]}</b> (${max})`;
+}
+updateZoneSummary();
+
+// ---------- ZONE MAP IMAGE EXPORT ----------
+const ZONE_RECTS = {
+  9:{x:0,   y:0,   w:1000, h:52,  fill:'#f4f2ea'},
+  6:{x:0,   y:55,  w:500,  h:90,  fill:'#eceef0'},
+  7:{x:500, y:55,  w:500,  h:90,  fill:'#eceef0'},
+  5:{x:0,   y:148, w:200,  h:180, fill:'#fdfcf9'},
+  2:{x:200, y:148, w:176,  h:180, fill:'#dbe9de'},
+  3:{x:376, y:148, w:248,  h:90,  fill:'#dae7f4'},
+  1:{x:376, y:238, w:248,  h:90,  fill:'#f6d3d3'},
+  4:{x:624, y:148, w:176,  h:180, fill:'#f5dbe6'},
+  8:{x:800, y:148, w:200,  h:180, fill:'#fdfcf9'}
+};
+
+function drawFieldDiagram(ctx, offsetX, offsetY){
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+
+  for (const n in ZONE_RECTS){
+    const z = ZONE_RECTS[n];
+    ctx.fillStyle = z.fill;
+    ctx.fillRect(z.x, z.y, z.w, z.h);
+    ctx.strokeStyle = 'rgba(11,31,58,0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(z.x, z.y, z.w, z.h);
+  }
+
+  // real circle
+  ctx.strokeStyle = '#0B1F3A';
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(201,328);
+  ctx.ellipse(467,328,266,180,0,Math.PI,1.5*Math.PI,false);
+  ctx.lineTo(533,148);
+  ctx.ellipse(533,328,266,180,0,1.5*Math.PI,2*Math.PI,false);
+  ctx.stroke();
+
+  // 5m offset dashed circle
+  ctx.globalAlpha = 0.4;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([14,10]);
+  ctx.beginPath();
+  ctx.moveTo(110,328);
+  ctx.ellipse(467,328,357,242,0,Math.PI,1.5*Math.PI,false);
+  ctx.lineTo(533,86);
+  ctx.ellipse(533,328,357,242,0,1.5*Math.PI,2*Math.PI,false);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 5m and 10m marks
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 6;
+  [376,624].forEach(x => { ctx.beginPath(); ctx.moveTo(x,308); ctx.lineTo(x,328); ctx.stroke(); });
+  ctx.globalAlpha = 0.4;
+  [285,715].forEach(x => { ctx.beginPath(); ctx.moveTo(x,312); ctx.lineTo(x,328); ctx.stroke(); });
+
+  // goal
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 5;
+  ctx.strokeRect(467,311,66,17);
+  ctx.globalAlpha = 1;
+
+  // zone numbers, tap dots, count badges
+  for (const n in ZONE_RECTS){
+    const z = ZONE_RECTS[n];
+    const cx = z.x + z.w/2, cy = z.y + z.h/2;
+
+    ctx.fillStyle = '#0B1F3A';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n === '9' ? '\u2191' : n, cx, cy);
+
+    (tapLog || []).filter(t => String(t.zone) === n).forEach(t => {
+      const dx = z.x + (t.x/100)*z.w, dy = z.y + (t.y/100)*z.h;
+      ctx.fillStyle = 'rgba(179,40,45,0.75)';
+      ctx.beginPath();
+      ctx.arc(dx, dy, 6, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    if (tallies[n] > 0){
+      const bx = z.x + z.w - 20, by = z.y + 20;
+      ctx.fillStyle = '#B3282D';
+      ctx.beginPath();
+      ctx.arc(bx, by, 15, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(tallies[n], bx, by+1);
+    }
+  }
+
+  ctx.restore();
+}
+
+function exportZoneImage(){
+  const s = slots[activeSlot];
+  const canvas = document.createElement('canvas');
+  const scale = 2; // sharper output
+  canvas.width = 1040*scale;
+  canvas.height = 560*scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = '#F4F2EA';
+  ctx.fillRect(0,0,1040,560);
+
+  ctx.fillStyle = '#0B1F3A';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`Areas of Interest \u2014 ${s.name || ('Umpire ' + activeSlot)}`, 20, 40);
+
+  ctx.fillStyle = '#5b6472';
+  ctx.font = '16px sans-serif';
+  const meta = [
+    document.getElementById('f_event').value,
+    document.getElementById('f_field').value,
+    document.getElementById('f_date').value
+  ].filter(Boolean).join('  \u00b7  ');
+  ctx.fillText(meta || ' ', 20, 65);
+
+  drawFieldDiagram(ctx, 20, 85);
+
+  const total = tapLog.length;
+  ctx.fillStyle = '#0B1F3A';
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'left';
+  if (total === 0){
+    ctx.fillText('No incidents logged.', 20, 505);
+  } else {
+    let busiest = 1, max = 0;
+    for (const k in tallies){ if (tallies[k] > max){ max = tallies[k]; busiest = k; } }
+    ctx.fillText(`${total} incident${total>1?'s':''} logged \u00b7 busiest: ${ZONE_NAMES[busiest]} (${max})`, 20, 505);
+  }
+
+  ctx.fillStyle = '#5b6472';
+  ctx.font = '12.5px sans-serif';
+  const legendLines = [
+    '1 In front of goal   2 Circle near   3 Top of circle   4 Circle far',
+    '5 Sideline near   6 Inside 23 near   7 Inside 23 far   8 Sideline far   9 23m and beyond'
+  ];
+  legendLines.forEach((line, i) => ctx.fillText(line, 20, 528 + i*18));
+
+  canvas.toBlob(async (blob) => {
+    const filename = `${(s.name||'umpire').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_')}_areas_of_interest.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      try {
+        await navigator.share({ files:[file], title:'Areas of Interest' });
+        return;
+      } catch(err){ /* user cancelled or share failed — fall through to download */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, 'image/png');
+}
+
+document.getElementById('saveZoneImgBtn').addEventListener('click', exportZoneImage);
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 1600);
+}
+
+function captureFieldsToSlot(slot){
+  const s = slots[slot];
+  s.name = document.getElementById('f_name').value.trim();
+  s.panel = document.getElementById('f_panel').value;
+  if (s.schedRating && panelFromText(s.schedRating) !== s.panel) s.schedRating = ''; // assessor changed it by hand
+  s.comments = document.getElementById('f_comments').value.trim();
+  s.hasPrivate = document.getElementById('f_hasPrivate').checked;
+  s.privateNotes = document.getElementById('f_private').value.trim();
+  s.hasAreas = document.getElementById('f_hasAreas').checked;
+  // s.ratings, s.tallies, s.tapLog are already up to date — live references
+}
+
+function loadSlotToFields(slot){
+  const s = slots[slot];
+  document.getElementById('f_name').value = s.name;
+  document.getElementById('f_panel').value = s.panel;
+  document.getElementById('f_comments').value = s.comments;
+  document.getElementById('f_hasPrivate').checked = s.hasPrivate;
+  document.getElementById('privateWrap').style.display = s.hasPrivate ? 'block' : 'none';
+  document.getElementById('f_private').value = s.privateNotes;
+  document.getElementById('f_hasAreas').checked = s.hasAreas;
+  document.getElementById('areasWrap').style.display = s.hasAreas ? 'block' : 'none';
+
+  ratings = s.ratings; // rebind the live reference to this slot's ratings
+  tallies = s.tallies;
+  tapLog = s.tapLog;
+  renderZoneState();
+
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('sel-1','sel-2','sel-3','sel-4','sel-5'));
+  ratings.forEach((val, idx) => {
+    if (val > 0){
+      const pill = document.querySelector(`#pills_${idx} .pill[data-val="${val}"]`);
+      if (pill) pill.classList.add('sel-' + val);
+    }
+  });
+  updateScore();
+}
+
+function switchSlot(n){
+  if (n === activeSlot) return;
+  captureFieldsToSlot(activeSlot);
+  activeSlot = n;
+  loadSlotToFields(activeSlot);
+  renderTabs();
+}
+
+function renderTabs(){
+  const wrap = document.getElementById('slotTabs');
+  wrap.innerHTML = [1,2].map(n => {
+    const s = slots[n];
+    const rated = s.ratings.filter(r => r > 0).length;
+    const done = s.name && rated === 6;
+    return `<button class="slot-tab ${n === activeSlot ? 'active' : ''} ${done ? 'done' : ''}" data-slot="${n}">
+      <span class="st-label">Umpire ${n}</span>
+      <span class="st-sub">${s.name ? s.name : 'Not started'}${s.name ? ' · ' + rated + '/6' : ''}</span>
+    </button>`;
+  }).join('');
+}
+document.getElementById('slotTabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.slot-tab');
+  if (!btn) return;
+  switchSlot(+btn.dataset.slot);
+});
+
+document.getElementById('f_hasPrivate').addEventListener('change', (e) => {
+  document.getElementById('privateWrap').style.display = e.target.checked ? 'block' : 'none';
+  if (!e.target.checked){
+    document.getElementById('f_private').value = '';
+  }
+});
+
+document.getElementById('f_hasAreas').addEventListener('change', (e) => {
+  document.getElementById('areasWrap').style.display = e.target.checked ? 'block' : 'none';
+  if (!e.target.checked){
+    for (const k in tallies){ tallies[k] = 0; }
+    tapLog.length = 0;
+    renderZoneState();
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  slots[activeSlot] = makeSlot();
+  loadSlotToFields(activeSlot);
+  renderTabs();
+});
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  captureFieldsToSlot(activeSlot);
+  const s = slots[activeSlot];
+  if (!s.name){ showToast("Add the umpire's name first"); return; }
+  if (s.ratings.some(r => r === 0)){ showToast("Rate all six criteria first"); return; }
+
+  const sum = s.ratings.reduce((a,b)=>a+b,0);
+  const mark = sum / 6;
+  const band = FEEDBACK_BANDS.find(b => mark >= b.min && mark <= b.max) || FEEDBACK_BANDS[2];
+
+  const entry = {
+    name: s.name,
+    panel: s.panel,
+    rating: s.schedRating || s.panel,
+    slot: activeSlot,
+    submitted: false,
+    assessor: document.getElementById('f_assessor').value.trim(),
+    event: document.getElementById('f_event').value.trim(),
+    level: document.getElementById('f_level').value.trim(),
+    teams: document.getElementById('f_teams').value.trim(),
+    date: document.getElementById('f_date').value,
+    field: document.getElementById('f_field').value.trim(),
+    time: document.getElementById('f_time').value,
+    ratings: [...s.ratings],
+    ratingLabels: s.ratings.map(r => RATING_LABELS[r-1]),
+    comments: s.comments,
+    hasPrivate: s.hasPrivate,
+    privateNotes: s.privateNotes,
+    hasAreas: s.hasAreas,
+    tallies: {...s.tallies},
+    tapLog: [...s.tapLog],
+    mark,
+    feedback: band.text
+  };
+  queue.push(entry);
+  renderQueue();
+  showToast(`Saved ${s.name} · ${mark.toFixed(2)}/5 (Umpire ${activeSlot})`);
+
+  slots[activeSlot] = makeSlot();
+  loadSlotToFields(activeSlot);
+  renderTabs();
+});
+
+function renderQueue(){
+  const wrap = document.getElementById('queue');
+  const chip = document.getElementById('chip');
+  if (queue.length === 0){
+    wrap.innerHTML = `<div class="empty"><span class="icn">📋</span>No assessments saved yet this session.</div>`;
+    chip.style.display = 'none';
+  } else {
+    chip.style.display = 'flex';
+    chip.textContent = queue.length;
+    wrap.innerHTML = queue.map((q, i) => `
+      <div class="queue-item">
+        <div class="qi-left">
+          <div class="qi-badge" style="background:${PANEL_COLORS[q.panel] || '#5b6472'}">${q.mark.toFixed(1)}</div>
+          <div>
+            <div class="qi-name">${q.name}${q.hasPrivate ? '<span class="private-tag">🔒 Private notes</span>' : ''}${q.tallies && Object.values(q.tallies).some(v=>v>0) ? '<span class="areas-tag">📍 Areas of interest</span>' : ''}${q.submitted ? '<span class="private-tag" style="background:#2F6B4F;color:#fff;">✓ Sent</span>' : ''}</div>
+            <div class="qi-sub">${esc(String(q.rating || q.panel).replace(' Umpire Panel',''))} · ${q.event || 'No event'}</div>
+          </div>
+        </div>
+        <button class="qi-remove" data-idx="${i}">Remove</button>
+      </div>
+    `).join('');
+  }
+}
+document.getElementById('queue').addEventListener('click', (e) => {
+  const btn = e.target.closest('.qi-remove');
+  if (!btn) return;
+  queue.splice(+btn.dataset.idx, 1);
+  renderQueue();
+});
+
+// ---------- XLSX EXPORT ----------
+function sheetName(name, used){
+  let base = name.replace(/[\\\/\?\*\[\]:]/g, '').substring(0,28) || 'Umpire';
+  let n = base, i = 2;
+  while (used.has(n)){ n = (base.substring(0,25) + ' ' + i); i++; }
+  used.add(n);
+  return n;
+}
+
+function buildSummarySheet(wb, entries){
+  const head = ['Event','Date','Time','Field','Division','Teams','Umpire Manager','Umpire','Umpire Slot','USA FH Rating'].concat(CRITERIA).concat(['Performance Mark (out of 5)','Performance Feedback','Comments to Umpire','Private Notes (Not Shared with Umpire)','Areas of Interest (zone tally)']);
+  const rows = [head].concat(entries.map(en => {
+    const tally = Object.keys(en.tallies || {}).filter(k => en.tallies[k] > 0).map(k => `Zone ${k}: ${en.tallies[k]}`).join('; ');
+    return [en.event, en.date, fmtTime12(en.time), en.field, en.level, en.teams, en.assessor, en.name, 'Umpire ' + (en.slot || ''), en.rating || en.panel]
+      .concat(en.ratings).concat([Number(en.mark.toFixed(2)), en.feedback, en.comments, en.hasPrivate ? en.privateNotes : '', tally]);
+  }));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const markCol = 10 + CRITERIA.length;
+  const border = {style:'thin', color:{rgb:'FFC9A227'}};
+  head.forEach((_, c) => { ws[XLSX.utils.encode_cell({r:0,c})].s = { font:{bold:true, color:{rgb:'FFFFFFFF'}}, fill:{patternType:'solid', fgColor:{rgb:'FF1B2A41'}}, alignment:{wrapText:true, vertical:'center'} }; });
+  for (let r = 1; r < rows.length; r++){
+    ws[XLSX.utils.encode_cell({r, c:markCol})].s = { font:{bold:true, sz:13, color:{rgb:'FF1B2A41'}}, fill:{patternType:'solid', fgColor:{rgb:'FFF2C94C'}}, border:{top:border,bottom:border,left:border,right:border}, alignment:{horizontal:'center'} };
+  }
+  ws['!cols'] = head.map((h, i) => ({ wch: i === markCol ? 16 : (i < 10 ? 16 : (i > markCol ? 36 : 14)) }));
+  ws['!rows'] = [{ hpt: 48 }];
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  XLSX.utils.book_append_sheet(wb, ws, 'Game Summary');
+}
+
+function gameKey(en){ return [en.event, en.date, en.field, en.time, en.teams].join('|'); }
+function gameFileName(en){
+  const clean = t => String(t || '').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_');
+  return [clean(en.event) || 'Game', clean(en.field), String(en.time || '').replace(':',''), en.date || new Date().toISOString().slice(0,10), clean(en.assessor)].filter(Boolean).join('_') + '.xlsx';
+}
+function xlsxBlob(wb){
+  const out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  return new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+async function submitGame(){
+  if (queue.length === 0){ showToast("Save an assessment first"); return; }
+  const last = queue[queue.length - 1];
+  const entries = queue.filter(q => gameKey(q) === gameKey(last)).sort((a,b) => (a.slot||0) - (b.slot||0));
+  const wb = buildWorkbook(entries, true);
+  const name = gameFileName(last);
+  const file = new File([xlsxBlob(wb)], name, { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  let sent = false;
+  try {
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:'Umpire assessment: ' + (last.event || 'Game'), text:'Umpire assessment for ' + [last.field, fmtTime12(last.time)].filter(Boolean).join(' ') });
+      sent = true;
+    }
+  } catch (err){
+    if (err && err.name === 'AbortError') return;   // assessor closed the share sheet; nothing sent
+  }
+  if (!sent){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('File saved. Attach it to an email to Brian.');
+  } else {
+    showToast('Ready to send to Brian');
+  }
+  entries.forEach(en => { en.submitted = true; });
+  renderQueue();
+}
+
+function buildWorkbook(entries, summary){
+  const wb = XLSX.utils.book_new();
+  if (summary) buildSummarySheet(wb, entries);   // first tab: one flat row per umpire
+
+  // Reference sheet, same as source template
+  const refWs = {};
+  const refRows = [
+    ["", "USAFH Umpire Panels", "", "Umpire Performance", "", "Performance Feedback", ""],
+    ["", "Starter Umpire Panel", "", "Well Below Current Panel", 1, "Significant shortcomings and overall well below the standard expected of umpires on their current panel", "1 - 1.80"],
+    ["", "Local Umpire Panel", "", "Below Current Panel", 2, "Some shortcomings and overall not fully reaching the standard expected from umpires on their current panel", "1.81 - 2.60"],
+    ["", "Regional Umpire Panel", "", "At Current Panel", 3, "Consistently at the standard expected from umpires on their current panel", "2.61 - 3.40"],
+    ["", "National Umpire Panel", "", "Above Current Panel", 4, "Better than the standard expected from umpires on their current panel", "3.41 - 4.20"],
+    ["", "International Umpire Panel", "", "Well Above Current Panel", 5, "An exceptional standard, significantly better than the standard expected from umpires on their current panel", "4.21 - 5"]
+  ];
+  const refSheet = XLSX.utils.aoa_to_sheet(refRows);
+  XLSX.utils.book_append_sheet(wb, refSheet, "Panels and Performance");
+
+  const used = new Set(["Panels and Performance", "Game Summary"]);
+
+  entries.forEach(en => {
+    const CRIT_START = 14;                 // row 15 — leaves room for Field/Time above
+    const MARK_ROW = CRIT_START + 7;       // one blank row after the 6 criteria
+    const FEEDBACK_ROW = MARK_ROW + 1;
+    const FEEDBACK_END = FEEDBACK_ROW + 3; // 4-row feedback block, matches source template
+    let totalRows = FEEDBACK_END + 1;
+    let privateLabelRow, privateTextStart, privateTextEnd;
+    let areasLabelRow, areasTextStart, areasTextEnd;
+    const hasTaps = en.hasAreas && en.tallies && Object.values(en.tallies).some(v => v > 0);
+    if (en.hasPrivate){
+      privateLabelRow = FEEDBACK_END + 2;   // one blank row gap
+      privateTextStart = privateLabelRow + 1;
+      privateTextEnd = privateTextStart + 5; // 6-row notes block
+      totalRows = privateTextEnd + 1;
+
+      if (hasTaps){
+        areasLabelRow = privateTextEnd + 2; // one blank row gap
+        areasTextStart = areasLabelRow + 1;
+        areasTextEnd = areasTextStart + 3;  // 4-row block
+        totalRows = areasTextEnd + 1;
+      }
+    }
+
+    const rows = [];
+    for (let r = 0; r < totalRows; r++) rows.push([]);
+    rows[1][0] = "Umpire Assessment Sheet";
+    rows[3][0] = "Umpire's Name: ";      rows[3][1] = en.name;
+    rows[4][0] = "USA FH Rating (Current Panel): "; rows[4][1] = en.rating || en.panel;
+    rows[5][0] = "Assessor\u2019s Name: ";   rows[5][1] = en.assessor;
+    rows[7][0] = "Event: ";              rows[7][1] = en.event;
+    rows[8][0] = "Level / Age Division: "; rows[8][1] = en.level;
+    rows[9][0] = "Teams:";               rows[9][1] = en.teams;
+    rows[10][0] = "Date/s:";             rows[10][1] = en.date;
+    rows[11][0] = "Field Number:";       rows[11][1] = en.field;
+    rows[12][0] = "Time of Game:";       rows[12][1] = en.time;
+
+    CRITERIA.forEach((c, i) => {
+      const rowIdx = CRIT_START + i;
+      rows[rowIdx][0] = c + ":";
+      rows[rowIdx][1] = en.ratingLabels[i];
+      rows[rowIdx][2] = en.ratings[i];
+      if (i === 0){
+        rows[rowIdx][3] = "Comments to Umpire: ";
+      }
+    });
+
+    rows[MARK_ROW][0] = "Performance Mark (out of 5)"; rows[MARK_ROW][1] = Number(en.mark.toFixed(2));
+    rows[FEEDBACK_ROW][0] = "Performance Feedback";    rows[FEEDBACK_ROW][1] = en.feedback;
+
+    const merges = [
+      { s:{r:CRIT_START,c:3}, e:{r:FEEDBACK_END,c:7} },     // comments to umpire block
+      { s:{r:FEEDBACK_ROW,c:1}, e:{r:FEEDBACK_END,c:1} }    // feedback block
+    ];
+
+    if (en.hasPrivate){
+      rows[privateLabelRow][0] = "Private Notes (Not Shared with Umpire):";
+      merges.push({ s:{r:privateTextStart,c:0}, e:{r:privateTextEnd,c:7} });
+
+      if (hasTaps){
+        rows[areasLabelRow][0] = "Areas of Interest — Zone Tally (Umpire-Specific):";
+        merges.push({ s:{r:areasTextStart,c:0}, e:{r:areasTextEnd,c:7} });
+      }
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!merges'] = merges;
+    const commentsCell = XLSX.utils.encode_cell({r:CRIT_START,c:3});
+    ws[commentsCell] = { t:'s', v: en.comments || '' };
+    if (en.hasPrivate){
+      const privateCell = XLSX.utils.encode_cell({r:privateTextStart,c:0});
+      ws[privateCell] = { t:'s', v: en.privateNotes || '' };
+      if (hasTaps){
+        const areasCell = XLSX.utils.encode_cell({r:areasTextStart,c:0});
+        const summary = Object.keys(en.tallies)
+          .filter(k => en.tallies[k] > 0)
+          .map(k => `Zone ${k} \u2013 ${ZONE_NAMES[k]}: ${en.tallies[k]}`)
+          .join('; ');
+        ws[areasCell] = { t:'s', v: summary };
+      }
+    }
+    const HL = { font:{bold:true, sz:14, color:{rgb:'FF1B2A41'}}, fill:{patternType:'solid', fgColor:{rgb:'FFF2C94C'}},
+                 border:{top:{style:'medium',color:{rgb:'FFC9A227'}},bottom:{style:'medium',color:{rgb:'FFC9A227'}},left:{style:'medium',color:{rgb:'FFC9A227'}},right:{style:'medium',color:{rgb:'FFC9A227'}}},
+                 alignment:{horizontal:'center'} };
+    const mLabel = XLSX.utils.encode_cell({r:MARK_ROW,c:0}), mVal = XLSX.utils.encode_cell({r:MARK_ROW,c:1});
+    ws[mLabel].s = Object.assign({}, HL, {alignment:{horizontal:'left'}});
+    ws[mVal].s = HL;
+    ws['!cols'] = [{wch:34},{wch:24},{wch:8},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14}];
+
+    const name = sheetName(en.name, used);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+
+  return wb;
+}
+
+document.getElementById('submitBtn').addEventListener('click', submitGame);
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (queue.length === 0){ showToast("No saved assessments yet"); return; }
+  const wb = buildWorkbook(queue, true);
+  const eventLabel = (queue[0].event || 'Umpire_Assessments').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_');
+  const dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `${eventLabel}_${dateStr}.xlsx`);
+  showToast(`Exported ${queue.length} assessment${queue.length>1?'s':''}`);
+});
+
+function esc(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ---------- SCHEDULE PARSING (pure functions) ----------
+//SCHED-PURE-START
+const HEADER_ALIASES = {
+  date:    ['date','day','gamedate'],
+  time:    ['time','starttime','gametime','kickoff'],
+  field:   ['field','pitch','fieldnumber','location','venue'],
+  division:['division','level','age','agedivision','agegroup'],
+  teamA:   ['teama','team1','home','hometeam'],
+  teamB:   ['teamb','team2','away','awayteam'],
+  u1:      ['umpire1','ump1','official1','umpirea'],
+  u2:      ['umpire2','ump2','official2','umpireb'],
+  p1:      ['panel1','umpire1panel','ump1panel','grade1'],
+  p2:      ['panel2','umpire2panel','ump2panel','grade2']
+};
+function normKey(s){ return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+function parseTime(raw){
+  // returns "HH:MM" (24h) or ''
+  let s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (/^0?\.\d+$/.test(s) || /^\d\.\d+$/.test(s)){            // Excel fraction of a day
+    const mins = Math.round(parseFloat(s) * 24 * 60);
+    return String(Math.floor(mins/60) % 24).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
+  }
+  const m = s.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*([AaPp])\.?[Mm]?\.?$/) || s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!m) return '';
+  let h = parseInt(m[1],10), mi = parseInt(m[2] || '0',10);
+  const ap = m[3] ? m[3].toLowerCase() : null;
+  if (ap === 'p' && h < 12) h += 12;
+  if (ap === 'a' && h === 12) h = 0;
+  if (h > 23 || mi > 59) return '';
+  return String(h).padStart(2,'0') + ':' + String(mi).padStart(2,'0');
+}
+function fmtTime12(hhmm){
+  if (!hhmm) return '';
+  const [h,m] = hhmm.split(':').map(Number);
+  return ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+function toISODate(raw){
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + '-' + m[2].padStart(2,'0') + '-' + m[3].padStart(2,'0');
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m){
+    let y = +m[3]; if (y < 100) y += 2000;
+    return y + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0');
+  }
+  return '';
+}
+function parseScheduleRows(rows){
+  // rows = array of arrays (header:1). Finds the header row, maps columns, returns {games, error}
+  let hdrIdx = -1, colMap = null;
+  for (let r = 0; r < Math.min(rows.length, 15); r++){
+    const keys = (rows[r] || []).map(normKey);
+    const map = {};
+    for (const field in HEADER_ALIASES){
+      const idx = keys.findIndex(k => HEADER_ALIASES[field].includes(k));
+      if (idx >= 0) map[field] = idx;
+    }
+    if (map.field !== undefined && map.time !== undefined){ hdrIdx = r; colMap = map; break; }
+  }
+  if (hdrIdx < 0) return { games:[], error:"Couldn't find the header row. The sheet needs at least a Field column and a Time column." };
+  const get = (row, f) => colMap[f] === undefined ? '' : String(row[colMap[f]] == null ? '' : row[colMap[f]]).trim();
+  const games = [];
+  for (let r = hdrIdx + 1; r < rows.length; r++){
+    const row = rows[r] || [];
+    const field = get(row,'field');
+    const time = parseTime(get(row,'time'));
+    if (!field || !time) continue;
+    games.push({
+      dateRaw: get(row,'date'), date: toISODate(get(row,'date')),
+      time, field, division: get(row,'division'),
+      teamA: get(row,'teamA'), teamB: get(row,'teamB'),
+      u1: get(row,'u1'), u2: get(row,'u2'), p1: get(row,'p1'), p2: get(row,'p2')
+    });
+  }
+  if (!games.length) return { games:[], error:"Found the headers but no usable game rows (each needs a Field and a Time)." };
+  return { games, error:null };
+}
+//SCHED-PURE-END
+
+// ---------- OPENING SCREEN + GAME PICKER ----------
+let appMode = null;           // 'tournament' | 'event' | 'game'
+let schedule = null;          // {event, games:[...]}
+let lastGameIdx = '';
+const SCHED_KEY = 'umpireAssess.schedule.v1';
+
+function saveSchedule(){ try { localStorage.setItem(SCHED_KEY, JSON.stringify(schedule)); } catch(e){} }
+function loadSavedSchedule(){
+  try { const raw = localStorage.getItem(SCHED_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+}
+
+function setSchedStatus(msg, kind){
+  const el = document.getElementById('s_status');
+  el.textContent = msg; el.className = 'sched-status' + (kind ? ' ' + kind : '');
+  document.getElementById('go_tournament').disabled = !(schedule && schedule.games && schedule.games.length);
+}
+
+document.querySelectorAll('.mode-top').forEach(top => {
+  top.addEventListener('click', () => {
+    const card = top.parentElement;
+    const wasOpen = card.classList.contains('open');
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('open'));
+    if (!wasOpen) card.classList.add('open');
+  });
+});
+
+document.getElementById('s_file').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', raw:true }); // raw:true keeps CSV dates as typed (no timezone shifting)
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' });
+      const res = parseScheduleRows(rows);
+      if (res.error){ schedule = null; setSchedStatus(res.error, 'err'); return; }
+      schedule = { event: document.getElementById('s_event_t').value.trim(), games: res.games, loadedAt: new Date().toISOString(), fileName: file.name };
+      saveSchedule();
+      const fields = new Set(res.games.map(g => g.field)).size;
+      setSchedStatus(`Loaded ${res.games.length} games across ${fields} field${fields>1?'s':''} from ${file.name}.`, 'ok');
+    } catch(err){
+      schedule = null;
+      setSchedStatus("That file couldn't be read. Try saving it as .xlsx or .csv and uploading again.", 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('s_template').addEventListener('click', () => {
+  const rows = [
+    ['Date','Time','Field','Division','Team A','Team B','Umpire 1','Panel 1','Umpire 2','Panel 2'],
+    ['2026-11-07','9:00 AM','Field 1','Open','Team A','Team B','Test Umpire A','Regional','Test Umpire B','Local'],
+    ['2026-11-07','9:00 AM','Field 2','Masters','Team C','Team D','Test Umpire C','Local','Test Umpire D','Starter'],
+    ['2026-11-07','10:15 AM','Field 1','Open','Team E','Team F','Test Umpire E','National','Test Umpire F','Regional'],
+    ['2026-11-07','10:15 AM','Field 2','Masters','Team G','Team H','Test Umpire G','Local','Test Umpire H','Local'],
+    ['2026-11-07','11:30 AM','Field 1','Open','Team A','Team C','Test Umpire A','Regional','Test Umpire D','Starter']
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:16},{wch:10},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
+  XLSX.writeFile(wb, 'Sample_Tournament_Schedule.xlsx');
+});
+
+function relabelFieldInput(){
+  const lbl = document.getElementById('f_field').previousElementSibling;
+  const inp = document.getElementById('f_field');
+  if (appMode === 'game'){ lbl.textContent = 'Venue / Field'; inp.placeholder = 'e.g. Ohio State Field Hockey Complex'; }
+  else { lbl.textContent = 'Field Number'; inp.placeholder = 'e.g. Field 3'; }
+}
+
+function startMode(mode, eventName){
+  appMode = mode;
+  const evInput = document.getElementById('f_event');
+  if (eventName) evInput.value = eventName;
+  const names = { tournament:'Tournament', event:'Event', game:'Single game' };
+  const detail = eventName ? ' · ' + eventName : '';
+  document.getElementById('modeLabel').innerHTML = `<b>${names[mode]}</b>${esc(detail)}`;
+  document.getElementById('pickerCard').style.display = mode === 'tournament' ? 'block' : 'none';
+  relabelFieldInput();
+  if (mode === 'tournament') populatePicker();
+  document.getElementById('startScreen').style.display = 'none';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('go_tournament').addEventListener('click', () => {
+  const name = document.getElementById('s_event_t').value.trim() || (schedule && schedule.event) || '';
+  if (schedule) { schedule.event = name; saveSchedule(); }
+  startMode('tournament', name);
+});
+document.getElementById('go_event').addEventListener('click', () => startMode('event', document.getElementById('s_event_e').value.trim()));
+document.getElementById('go_game').addEventListener('click', () => startMode('game', document.getElementById('s_event_g').value.trim()));
+document.getElementById('changeModeBtn').addEventListener('click', () => {
+  document.getElementById('startScreen').style.display = 'block';
+});
+
+// ----- picker -----
+const pickDate = document.getElementById('pick_date');
+const pickField = document.getElementById('pick_field');
+const pickGame = document.getElementById('pick_game');
+const natCmp = (a,b) => String(a).localeCompare(String(b), undefined, { numeric:true });
+
+function populatePicker(){
+  if (!schedule) return;
+  const dates = [...new Set(schedule.games.map(g => g.date || g.dateRaw).filter(Boolean))].sort();
+  document.getElementById('pickDateWrap').style.display = dates.length > 1 ? 'block' : 'none';
+  pickDate.innerHTML = dates.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  populateFields();
+}
+function gamesForDate(){
+  const d = pickDate.value;
+  return schedule.games.map((g,i) => ({g,i})).filter(x => !d || (x.g.date || x.g.dateRaw) === d || !(x.g.date || x.g.dateRaw));
+}
+function populateFields(){
+  const fields = [...new Set(gamesForDate().map(x => x.g.field))].sort(natCmp);
+  pickField.innerHTML = '<option value="">Select a field…</option>' + fields.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+  populateGames();
+}
+function populateGames(){
+  const f = pickField.value;
+  if (!f){ pickGame.innerHTML = '<option value="">Select a field first</option>'; pickGame.disabled = true; return; }
+  const list = gamesForDate().filter(x => x.g.field === f).sort((a,b) => a.g.time.localeCompare(b.g.time));
+  pickGame.disabled = false;
+  pickGame.innerHTML = '<option value="">Select a game…</option>' + list.map(x => {
+    const teams = (x.g.teamA || x.g.teamB) ? ' · ' + [x.g.teamA, x.g.teamB].filter(Boolean).join(' vs ') : '';
+    const div = x.g.division ? ' (' + x.g.division + ')' : '';
+    return `<option value="${x.i}">${esc(fmtTime12(x.g.time) + teams + div)}</option>`;
+  }).join('');
+  lastGameIdx = '';
+}
+function panelFromText(t){
+  const opts = ['Starter Umpire Panel','Local Umpire Panel','Regional Umpire Panel','National Umpire Panel','International Umpire Panel'];
+  const s = String(t || '').toLowerCase();
+  // Check International before National: "international" contains the word "national".
+  const order = [opts[4], opts[3], opts[2], opts[1], opts[0]];
+  const hit = order.find(o => s && s.includes(o.split(' ')[0].toLowerCase()));
+  return hit || opts[0];
+}
+function applyGame(g){
+  document.getElementById('f_field').value = g.field;
+  document.getElementById('f_time').value = g.time;
+  document.getElementById('f_teams').value = [g.teamA, g.teamB].filter(Boolean).join(' vs ');
+  if (g.division) document.getElementById('f_level').value = g.division;
+  if (g.date) document.getElementById('f_date').value = g.date;
+  slots[1] = makeSlot(); slots[2] = makeSlot();
+  slots[1].name = g.u1; slots[1].panel = panelFromText(g.p1); slots[1].schedRating = String(g.p1 || '').trim();
+  slots[2].name = g.u2; slots[2].panel = panelFromText(g.p2); slots[2].schedRating = String(g.p2 || '').trim();
+  activeSlot = 1;
+  loadSlotToFields(1);
+  renderTabs();
+}
+
+pickDate.addEventListener('change', populateFields);
+pickField.addEventListener('change', populateGames);
+pickGame.addEventListener('change', () => {
+  if (pickGame.value === '') return;
+  captureFieldsToSlot(activeSlot);
+  const inProgress = [1,2].some(n => slots[n].ratings.some(r => r > 0));
+  if (inProgress && !confirm("Switching games clears the assessments you haven't saved yet. Continue?")){
+    pickGame.value = lastGameIdx; return;
+  }
+  lastGameIdx = pickGame.value;
+  const g = schedule.games[+pickGame.value];
+  applyGame(g);
+  const names = [g.u1, g.u2].filter(Boolean).join(' & ');
+  document.getElementById('pickNote').textContent = names ? `Loaded: ${names}. You can still edit anything below.` : 'Loaded. No umpires were listed for this game, so enter them below.';
+  showToast('Game loaded');
+});
+
+// Restore a previously uploaded schedule (works with no signal)
+(function restoreSaved(){
+  const saved = loadSavedSchedule();
+  if (saved && saved.games && saved.games.length){
+    schedule = saved;
+    if (saved.event) document.getElementById('s_event_t').value = saved.event;
+    const fields = new Set(saved.games.map(g => g.field)).size;
+    setSchedStatus(`Using saved schedule: ${saved.games.length} games across ${fields} field${fields>1?'s':''}${saved.fileName ? ' (' + saved.fileName + ')' : ''}. Upload a new file to replace it.`, 'ok');
+  }
+})();
+
+renderTabs();
+renderQueue();
+updateScore();
+</script>
+
+</body>
+</html>
