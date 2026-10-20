@@ -6,7 +6,7 @@
 <title>Umpire Assessment — Field Tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
   :root{
     --navy:#0B1F3A;
@@ -287,17 +287,161 @@
   .zone-summary b{color:var(--ink);}
   .zone-actions{display:flex; gap:8px; margin-top:10px;}
   .zone-actions .btn{padding:11px; font-size:12.5px;}
+
+  /* ---------- OPENING SCREEN ---------- */
+  .start{
+    position:fixed; top:0; left:0; right:0; bottom:0; z-index:100; overflow-y:auto;
+    background:var(--pitch);
+  }
+  .start-head{
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff; padding:26px 20px 30px;
+  }
+  .start-head .eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--gold); font-weight:600; margin-bottom:6px;}
+  .start-head h1{font-size:30px; font-weight:700; margin:0; line-height:1; display:flex; align-items:center; gap:10px;}
+  .start-head h1 .bar{width:6px; height:24px; background:var(--red); display:inline-block; border-radius:1px;}
+  .start-head .sub{font-size:14px; color:#c9d2e0; margin-top:8px;}
+  .start-wrap{max-width:640px; margin:0 auto; padding:18px 16px 40px;}
+  .start-q{font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; margin:4px 2px 12px;}
+  .mode-card{
+    background:var(--card); border:1.5px solid var(--line); border-radius:14px;
+    margin-bottom:12px; box-shadow:0 1px 3px rgba(11,31,58,.06); overflow:hidden;
+  }
+  .mode-card.open{border-color:var(--navy); box-shadow:0 4px 14px rgba(11,31,58,.14);}
+  .mode-top{display:flex; align-items:center; gap:14px; padding:16px; cursor:pointer;}
+  .mode-badge{
+    width:42px; height:42px; border-radius:10px; background:var(--navy); color:var(--gold);
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px;
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .mode-title{font-family:'Barlow Condensed',sans-serif; font-size:21px; font-weight:700; color:var(--navy); line-height:1.1;}
+  .mode-desc{font-size:13px; color:var(--muted); margin-top:3px; line-height:1.35;}
+  .mode-body{display:none; padding:0 16px 16px; border-top:1px solid var(--line);}
+  .mode-card.open .mode-body{display:block;}
+  .mode-body label{margin-top:14px;}
+  .file-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    border:1.5px dashed var(--navy); border-radius:10px; padding:14px; cursor:pointer;
+    font-weight:600; font-size:14px; color:var(--navy); background:#fdfcf9; text-align:center;
+  }
+  .file-btn input{display:none;}
+  .sched-status{font-size:12.5px; margin-top:8px; line-height:1.4;}
+  .sched-status.ok{color:var(--green); font-weight:600;}
+  .sched-status.err{color:var(--red); font-weight:600;}
+  .link-btn{background:none; border:none; padding:0; color:var(--navy); font-size:12.5px; font-weight:600; text-decoration:underline; cursor:pointer; font-family:inherit;}
+  .soon{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; padding:12px; border:1.5px solid var(--line); border-radius:10px;
+    background:#f3f1ea; color:var(--muted); font-size:13.5px; font-weight:600;
+  }
+  .soon span.tag{font-size:10.5px; background:#e5e1d3; color:#6b6558; padding:2px 8px; border-radius:999px; font-weight:700; letter-spacing:.04em;}
+  .start-go{margin-top:14px;}
+  .start-go:disabled{opacity:.4; cursor:not-allowed;}
+
+  /* ---------- MODE BAR + GAME PICKER ---------- */
+  .modebar{
+    margin-top:10px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:12.5px; color:#dbe2ee;
+  }
+  .modebar b{color:#fff;}
+  .modebar button{
+    background:transparent; border:1px solid #6f82a3; color:#fff; border-radius:999px;
+    font-size:11.5px; font-weight:600; padding:4px 11px; cursor:pointer; font-family:inherit; flex:none;
+  }
+  .picker-card{border-color:var(--gold); background:#fffdf4;}
+  .picker-card select{margin-bottom:0;}
+  .picker-note{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4;}
 </style>
 </head>
 <body>
 
+<div class="start" id="startScreen">
+  <div class="start-head">
+    <div class="eyebrow">USA Field Hockey · Umpire Manager</div>
+    <h1><span class="bar"></span>Umpire Assessment</h1>
+    <div class="sub">Pick how you're working today. You can change it anytime.</div>
+  </div>
+  <div class="start-wrap">
+    <div class="start-q">What are you assessing?</div>
+
+    <div class="mode-card" id="mode_tournament">
+      <div class="mode-top" data-mode="tournament">
+        <div class="mode-badge">A</div>
+        <div>
+          <div class="mode-title">Tournament with a schedule</div>
+          <div class="mode-desc">Pick a field and game, and the umpires fill in for you.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Event name</label>
+        <input type="text" id="s_event_t" placeholder="e.g. 2026 USAFHL Adult Club Championships">
+        <label>Schedule</label>
+        <label class="file-btn" for="s_file">
+          <span id="s_file_label">Upload schedule (.xlsx or .csv)</span>
+          <input type="file" id="s_file" accept=".xlsx,.xls,.csv">
+        </label>
+        <div class="sched-status" id="s_status"></div>
+        <div style="margin-top:8px;"><button type="button" class="link-btn" id="s_template">Download a sample schedule to see the format</button></div>
+        <div class="soon"><span>Connect to Coordinate</span><span class="tag">COMING SOON</span></div>
+        <button type="button" class="btn btn-primary start-go" id="go_tournament" disabled>Start Tournament Mode</button>
+      </div>
+    </div>
+
+    <div class="mode-card" id="mode_event">
+      <div class="mode-top" data-mode="event">
+        <div class="mode-badge">B</div>
+        <div>
+          <div class="mode-title">Event without a schedule</div>
+          <div class="mode-desc">Smaller event. You'll enter the field, time and umpires for each game.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Event name</label>
+        <input type="text" id="s_event_e" placeholder="e.g. Regional Showcase">
+        <button type="button" class="btn btn-primary start-go" id="go_event">Start Event Mode</button>
+      </div>
+    </div>
+
+    <div class="mode-card" id="mode_game">
+      <div class="mode-top" data-mode="game">
+        <div class="mode-badge">C</div>
+        <div>
+          <div class="mode-title">Single game</div>
+          <div class="mode-desc">One match, such as a college game. Just the game and the umpires.</div>
+        </div>
+      </div>
+      <div class="mode-body">
+        <label>Competition (optional)</label>
+        <input type="text" id="s_event_g" placeholder="e.g. NCAA Division I regular season">
+        <button type="button" class="btn btn-primary start-go" id="go_game">Start Single Game</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <header class="top">
   <div class="eyebrow">USA Field Hockey · Umpire Manager</div>
   <h1><span class="bar"></span>Umpire Assessment</h1>
-  <div class="sub">Fill it out pitch-side. Export a workbook you can send or upload.</div>
+  <div class="modebar">
+    <span id="modeLabel">—</span>
+    <button type="button" id="changeModeBtn">Change</button>
+  </div>
 </header>
 
 <div class="wrap">
+
+  <div class="card picker-card" id="pickerCard" style="display:none;">
+    <h2>Select Game</h2>
+    <div id="pickDateWrap" style="display:none;">
+      <label>Date</label>
+      <select id="pick_date"></select>
+    </div>
+    <label>Field</label>
+    <select id="pick_field"></select>
+    <label>Game</label>
+    <select id="pick_game"></select>
+    <div class="picker-note" id="pickNote">Choosing a game fills in the field, time, teams and both umpires below. You can still edit anything.</div>
+  </div>
 
   <div class="card">
     <h2>Event Details</h2>
@@ -418,10 +562,11 @@
 
 <footer class="bar">
   <button class="btn btn-ghost" id="clearBtn" style="flex:1;">Clear Form</button>
-  <button class="btn btn-gold rel" id="exportBtn" style="flex:1.4;">
-    Export Workbook
+  <button class="btn btn-ghost rel" id="exportBtn" style="flex:1;">
+    Export All
     <span class="count-chip" id="chip" style="display:none;">0</span>
   </button>
+  <button class="btn btn-gold" id="submitBtn" style="flex:1.5;">Send to Brian</button>
 </footer>
 
 <script>
@@ -476,7 +621,7 @@ let queue = []; // saved assessments this session
 
 function makeSlot(){
   return {
-    name:'', panel:'Starter Umpire Panel', ratings:new Array(6).fill(0), comments:'',
+    name:'', panel:'Starter Umpire Panel', schedRating:'', ratings:new Array(6).fill(0), comments:'',
     hasPrivate:false, privateNotes:'',
     hasAreas:false, tallies:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0}, tapLog:[]
   };
@@ -830,6 +975,7 @@ function captureFieldsToSlot(slot){
   const s = slots[slot];
   s.name = document.getElementById('f_name').value.trim();
   s.panel = document.getElementById('f_panel').value;
+  if (s.schedRating && panelFromText(s.schedRating) !== s.panel) s.schedRating = ''; // assessor changed it by hand
   s.comments = document.getElementById('f_comments').value.trim();
   s.hasPrivate = document.getElementById('f_hasPrivate').checked;
   s.privateNotes = document.getElementById('f_private').value.trim();
@@ -924,6 +1070,9 @@ document.getElementById('saveBtn').addEventListener('click', () => {
   const entry = {
     name: s.name,
     panel: s.panel,
+    rating: s.schedRating || s.panel,
+    slot: activeSlot,
+    submitted: false,
     assessor: document.getElementById('f_assessor').value.trim(),
     event: document.getElementById('f_event').value.trim(),
     level: document.getElementById('f_level').value.trim(),
@@ -965,8 +1114,8 @@ function renderQueue(){
         <div class="qi-left">
           <div class="qi-badge" style="background:${PANEL_COLORS[q.panel] || '#5b6472'}">${q.mark.toFixed(1)}</div>
           <div>
-            <div class="qi-name">${q.name}${q.hasPrivate ? '<span class="private-tag">🔒 Private notes</span>' : ''}${q.tallies && Object.values(q.tallies).some(v=>v>0) ? '<span class="areas-tag">📍 Areas of interest</span>' : ''}</div>
-            <div class="qi-sub">${q.panel.replace(' Umpire Panel','')} · ${q.event || 'No event'}</div>
+            <div class="qi-name">${q.name}${q.hasPrivate ? '<span class="private-tag">🔒 Private notes</span>' : ''}${q.tallies && Object.values(q.tallies).some(v=>v>0) ? '<span class="areas-tag">📍 Areas of interest</span>' : ''}${q.submitted ? '<span class="private-tag" style="background:#2F6B4F;color:#fff;">✓ Sent</span>' : ''}</div>
+            <div class="qi-sub">${esc(String(q.rating || q.panel).replace(' Umpire Panel',''))} · ${q.event || 'No event'}</div>
           </div>
         </div>
         <button class="qi-remove" data-idx="${i}">Remove</button>
@@ -990,8 +1139,67 @@ function sheetName(name, used){
   return n;
 }
 
-function buildWorkbook(entries){
+function buildSummarySheet(wb, entries){
+  const head = ['Event','Date','Time','Field','Division','Teams','Umpire Manager','Umpire','Umpire Slot','USA FH Rating'].concat(CRITERIA).concat(['Performance Mark (out of 5)','Performance Feedback','Comments to Umpire','Private Notes (Not Shared with Umpire)','Areas of Interest (zone tally)']);
+  const rows = [head].concat(entries.map(en => {
+    const tally = Object.keys(en.tallies || {}).filter(k => en.tallies[k] > 0).map(k => `Zone ${k}: ${en.tallies[k]}`).join('; ');
+    return [en.event, en.date, fmtTime12(en.time), en.field, en.level, en.teams, en.assessor, en.name, 'Umpire ' + (en.slot || ''), en.rating || en.panel]
+      .concat(en.ratings).concat([Number(en.mark.toFixed(2)), en.feedback, en.comments, en.hasPrivate ? en.privateNotes : '', tally]);
+  }));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const markCol = 10 + CRITERIA.length;
+  const border = {style:'thin', color:{rgb:'FFC9A227'}};
+  head.forEach((_, c) => { ws[XLSX.utils.encode_cell({r:0,c})].s = { font:{bold:true, color:{rgb:'FFFFFFFF'}}, fill:{patternType:'solid', fgColor:{rgb:'FF1B2A41'}}, alignment:{wrapText:true, vertical:'center'} }; });
+  for (let r = 1; r < rows.length; r++){
+    ws[XLSX.utils.encode_cell({r, c:markCol})].s = { font:{bold:true, sz:13, color:{rgb:'FF1B2A41'}}, fill:{patternType:'solid', fgColor:{rgb:'FFF2C94C'}}, border:{top:border,bottom:border,left:border,right:border}, alignment:{horizontal:'center'} };
+  }
+  ws['!cols'] = head.map((h, i) => ({ wch: i === markCol ? 16 : (i < 10 ? 16 : (i > markCol ? 36 : 14)) }));
+  ws['!rows'] = [{ hpt: 48 }];
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  XLSX.utils.book_append_sheet(wb, ws, 'Game Summary');
+}
+
+function gameKey(en){ return [en.event, en.date, en.field, en.time, en.teams].join('|'); }
+function gameFileName(en){
+  const clean = t => String(t || '').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_');
+  return [clean(en.event) || 'Game', clean(en.field), String(en.time || '').replace(':',''), en.date || new Date().toISOString().slice(0,10), clean(en.assessor)].filter(Boolean).join('_') + '.xlsx';
+}
+function xlsxBlob(wb){
+  const out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  return new Blob([out], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+async function submitGame(){
+  if (queue.length === 0){ showToast("Save an assessment first"); return; }
+  const last = queue[queue.length - 1];
+  const entries = queue.filter(q => gameKey(q) === gameKey(last)).sort((a,b) => (a.slot||0) - (b.slot||0));
+  const wb = buildWorkbook(entries, true);
+  const name = gameFileName(last);
+  const file = new File([xlsxBlob(wb)], name, { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  let sent = false;
+  try {
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:'Umpire assessment: ' + (last.event || 'Game'), text:'Umpire assessment for ' + [last.field, fmtTime12(last.time)].filter(Boolean).join(' ') });
+      sent = true;
+    }
+  } catch (err){
+    if (err && err.name === 'AbortError') return;   // assessor closed the share sheet; nothing sent
+  }
+  if (!sent){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('File saved. Attach it to an email to Brian.');
+  } else {
+    showToast('Ready to send to Brian');
+  }
+  entries.forEach(en => { en.submitted = true; });
+  renderQueue();
+}
+
+function buildWorkbook(entries, summary){
   const wb = XLSX.utils.book_new();
+  if (summary) buildSummarySheet(wb, entries);   // first tab: one flat row per umpire
 
   // Reference sheet, same as source template
   const refWs = {};
@@ -1006,7 +1214,7 @@ function buildWorkbook(entries){
   const refSheet = XLSX.utils.aoa_to_sheet(refRows);
   XLSX.utils.book_append_sheet(wb, refSheet, "Panels and Performance");
 
-  const used = new Set(["Panels and Performance"]);
+  const used = new Set(["Panels and Performance", "Game Summary"]);
 
   entries.forEach(en => {
     const CRIT_START = 14;                 // row 15 — leaves room for Field/Time above
@@ -1035,7 +1243,7 @@ function buildWorkbook(entries){
     for (let r = 0; r < totalRows; r++) rows.push([]);
     rows[1][0] = "Umpire Assessment Sheet";
     rows[3][0] = "Umpire's Name: ";      rows[3][1] = en.name;
-    rows[4][0] = "Umpire's Current Panel: "; rows[4][1] = en.panel;
+    rows[4][0] = "USA FH Rating (Current Panel): "; rows[4][1] = en.rating || en.panel;
     rows[5][0] = "Assessor\u2019s Name: ";   rows[5][1] = en.assessor;
     rows[7][0] = "Event: ";              rows[7][1] = en.event;
     rows[8][0] = "Level / Age Division: "; rows[8][1] = en.level;
@@ -1088,6 +1296,12 @@ function buildWorkbook(entries){
         ws[areasCell] = { t:'s', v: summary };
       }
     }
+    const HL = { font:{bold:true, sz:14, color:{rgb:'FF1B2A41'}}, fill:{patternType:'solid', fgColor:{rgb:'FFF2C94C'}},
+                 border:{top:{style:'medium',color:{rgb:'FFC9A227'}},bottom:{style:'medium',color:{rgb:'FFC9A227'}},left:{style:'medium',color:{rgb:'FFC9A227'}},right:{style:'medium',color:{rgb:'FFC9A227'}}},
+                 alignment:{horizontal:'center'} };
+    const mLabel = XLSX.utils.encode_cell({r:MARK_ROW,c:0}), mVal = XLSX.utils.encode_cell({r:MARK_ROW,c:1});
+    ws[mLabel].s = Object.assign({}, HL, {alignment:{horizontal:'left'}});
+    ws[mVal].s = HL;
     ws['!cols'] = [{wch:34},{wch:24},{wch:8},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14}];
 
     const name = sheetName(en.name, used);
@@ -1097,14 +1311,280 @@ function buildWorkbook(entries){
   return wb;
 }
 
+document.getElementById('submitBtn').addEventListener('click', submitGame);
 document.getElementById('exportBtn').addEventListener('click', () => {
   if (queue.length === 0){ showToast("No saved assessments yet"); return; }
-  const wb = buildWorkbook(queue);
+  const wb = buildWorkbook(queue, true);
   const eventLabel = (queue[0].event || 'Umpire_Assessments').replace(/[^\w\- ]/g,'').trim().replace(/\s+/g,'_');
   const dateStr = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `${eventLabel}_${dateStr}.xlsx`);
   showToast(`Exported ${queue.length} assessment${queue.length>1?'s':''}`);
 });
+
+function esc(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ---------- SCHEDULE PARSING (pure functions) ----------
+//SCHED-PURE-START
+const HEADER_ALIASES = {
+  date:    ['date','day','gamedate'],
+  time:    ['time','starttime','gametime','kickoff'],
+  field:   ['field','pitch','fieldnumber','location','venue'],
+  division:['division','level','age','agedivision','agegroup'],
+  teamA:   ['teama','team1','home','hometeam'],
+  teamB:   ['teamb','team2','away','awayteam'],
+  u1:      ['umpire1','ump1','official1','umpirea'],
+  u2:      ['umpire2','ump2','official2','umpireb'],
+  p1:      ['panel1','umpire1panel','ump1panel','grade1'],
+  p2:      ['panel2','umpire2panel','ump2panel','grade2']
+};
+function normKey(s){ return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+
+function parseTime(raw){
+  // returns "HH:MM" (24h) or ''
+  let s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (/^0?\.\d+$/.test(s) || /^\d\.\d+$/.test(s)){            // Excel fraction of a day
+    const mins = Math.round(parseFloat(s) * 24 * 60);
+    return String(Math.floor(mins/60) % 24).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
+  }
+  const m = s.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*([AaPp])\.?[Mm]?\.?$/) || s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!m) return '';
+  let h = parseInt(m[1],10), mi = parseInt(m[2] || '0',10);
+  const ap = m[3] ? m[3].toLowerCase() : null;
+  if (ap === 'p' && h < 12) h += 12;
+  if (ap === 'a' && h === 12) h = 0;
+  if (h > 23 || mi > 59) return '';
+  return String(h).padStart(2,'0') + ':' + String(mi).padStart(2,'0');
+}
+function fmtTime12(hhmm){
+  if (!hhmm) return '';
+  const [h,m] = hhmm.split(':').map(Number);
+  return ((h % 12) || 12) + ':' + String(m).padStart(2,'0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+function toISODate(raw){
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + '-' + m[2].padStart(2,'0') + '-' + m[3].padStart(2,'0');
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m){
+    let y = +m[3]; if (y < 100) y += 2000;
+    return y + '-' + m[1].padStart(2,'0') + '-' + m[2].padStart(2,'0');
+  }
+  return '';
+}
+function parseScheduleRows(rows){
+  // rows = array of arrays (header:1). Finds the header row, maps columns, returns {games, error}
+  let hdrIdx = -1, colMap = null;
+  for (let r = 0; r < Math.min(rows.length, 15); r++){
+    const keys = (rows[r] || []).map(normKey);
+    const map = {};
+    for (const field in HEADER_ALIASES){
+      const idx = keys.findIndex(k => HEADER_ALIASES[field].includes(k));
+      if (idx >= 0) map[field] = idx;
+    }
+    if (map.field !== undefined && map.time !== undefined){ hdrIdx = r; colMap = map; break; }
+  }
+  if (hdrIdx < 0) return { games:[], error:"Couldn't find the header row. The sheet needs at least a Field column and a Time column." };
+  const get = (row, f) => colMap[f] === undefined ? '' : String(row[colMap[f]] == null ? '' : row[colMap[f]]).trim();
+  const games = [];
+  for (let r = hdrIdx + 1; r < rows.length; r++){
+    const row = rows[r] || [];
+    const field = get(row,'field');
+    const time = parseTime(get(row,'time'));
+    if (!field || !time) continue;
+    games.push({
+      dateRaw: get(row,'date'), date: toISODate(get(row,'date')),
+      time, field, division: get(row,'division'),
+      teamA: get(row,'teamA'), teamB: get(row,'teamB'),
+      u1: get(row,'u1'), u2: get(row,'u2'), p1: get(row,'p1'), p2: get(row,'p2')
+    });
+  }
+  if (!games.length) return { games:[], error:"Found the headers but no usable game rows (each needs a Field and a Time)." };
+  return { games, error:null };
+}
+//SCHED-PURE-END
+
+// ---------- OPENING SCREEN + GAME PICKER ----------
+let appMode = null;           // 'tournament' | 'event' | 'game'
+let schedule = null;          // {event, games:[...]}
+let lastGameIdx = '';
+const SCHED_KEY = 'umpireAssess.schedule.v1';
+
+function saveSchedule(){ try { localStorage.setItem(SCHED_KEY, JSON.stringify(schedule)); } catch(e){} }
+function loadSavedSchedule(){
+  try { const raw = localStorage.getItem(SCHED_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+}
+
+function setSchedStatus(msg, kind){
+  const el = document.getElementById('s_status');
+  el.textContent = msg; el.className = 'sched-status' + (kind ? ' ' + kind : '');
+  document.getElementById('go_tournament').disabled = !(schedule && schedule.games && schedule.games.length);
+}
+
+document.querySelectorAll('.mode-top').forEach(top => {
+  top.addEventListener('click', () => {
+    const card = top.parentElement;
+    const wasOpen = card.classList.contains('open');
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('open'));
+    if (!wasOpen) card.classList.add('open');
+  });
+});
+
+document.getElementById('s_file').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', raw:true }); // raw:true keeps CSV dates as typed (no timezone shifting)
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' });
+      const res = parseScheduleRows(rows);
+      if (res.error){ schedule = null; setSchedStatus(res.error, 'err'); return; }
+      schedule = { event: document.getElementById('s_event_t').value.trim(), games: res.games, loadedAt: new Date().toISOString(), fileName: file.name };
+      saveSchedule();
+      const fields = new Set(res.games.map(g => g.field)).size;
+      setSchedStatus(`Loaded ${res.games.length} games across ${fields} field${fields>1?'s':''} from ${file.name}.`, 'ok');
+    } catch(err){
+      schedule = null;
+      setSchedStatus("That file couldn't be read. Try saving it as .xlsx or .csv and uploading again.", 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('s_template').addEventListener('click', () => {
+  const rows = [
+    ['Date','Time','Field','Division','Team A','Team B','Umpire 1','Panel 1','Umpire 2','Panel 2'],
+    ['2026-11-07','9:00 AM','Field 1','Open','Team A','Team B','Test Umpire A','Regional','Test Umpire B','Local'],
+    ['2026-11-07','9:00 AM','Field 2','Masters','Team C','Team D','Test Umpire C','Local','Test Umpire D','Starter'],
+    ['2026-11-07','10:15 AM','Field 1','Open','Team E','Team F','Test Umpire E','National','Test Umpire F','Regional'],
+    ['2026-11-07','10:15 AM','Field 2','Masters','Team G','Team H','Test Umpire G','Local','Test Umpire H','Local'],
+    ['2026-11-07','11:30 AM','Field 1','Open','Team A','Team C','Test Umpire A','Regional','Test Umpire D','Starter']
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:16},{wch:10},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
+  XLSX.writeFile(wb, 'Sample_Tournament_Schedule.xlsx');
+});
+
+function relabelFieldInput(){
+  const lbl = document.getElementById('f_field').previousElementSibling;
+  const inp = document.getElementById('f_field');
+  if (appMode === 'game'){ lbl.textContent = 'Venue / Field'; inp.placeholder = 'e.g. Ohio State Field Hockey Complex'; }
+  else { lbl.textContent = 'Field Number'; inp.placeholder = 'e.g. Field 3'; }
+}
+
+function startMode(mode, eventName){
+  appMode = mode;
+  const evInput = document.getElementById('f_event');
+  if (eventName) evInput.value = eventName;
+  const names = { tournament:'Tournament', event:'Event', game:'Single game' };
+  const detail = eventName ? ' · ' + eventName : '';
+  document.getElementById('modeLabel').innerHTML = `<b>${names[mode]}</b>${esc(detail)}`;
+  document.getElementById('pickerCard').style.display = mode === 'tournament' ? 'block' : 'none';
+  relabelFieldInput();
+  if (mode === 'tournament') populatePicker();
+  document.getElementById('startScreen').style.display = 'none';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('go_tournament').addEventListener('click', () => {
+  const name = document.getElementById('s_event_t').value.trim() || (schedule && schedule.event) || '';
+  if (schedule) { schedule.event = name; saveSchedule(); }
+  startMode('tournament', name);
+});
+document.getElementById('go_event').addEventListener('click', () => startMode('event', document.getElementById('s_event_e').value.trim()));
+document.getElementById('go_game').addEventListener('click', () => startMode('game', document.getElementById('s_event_g').value.trim()));
+document.getElementById('changeModeBtn').addEventListener('click', () => {
+  document.getElementById('startScreen').style.display = 'block';
+});
+
+// ----- picker -----
+const pickDate = document.getElementById('pick_date');
+const pickField = document.getElementById('pick_field');
+const pickGame = document.getElementById('pick_game');
+const natCmp = (a,b) => String(a).localeCompare(String(b), undefined, { numeric:true });
+
+function populatePicker(){
+  if (!schedule) return;
+  const dates = [...new Set(schedule.games.map(g => g.date || g.dateRaw).filter(Boolean))].sort();
+  document.getElementById('pickDateWrap').style.display = dates.length > 1 ? 'block' : 'none';
+  pickDate.innerHTML = dates.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  populateFields();
+}
+function gamesForDate(){
+  const d = pickDate.value;
+  return schedule.games.map((g,i) => ({g,i})).filter(x => !d || (x.g.date || x.g.dateRaw) === d || !(x.g.date || x.g.dateRaw));
+}
+function populateFields(){
+  const fields = [...new Set(gamesForDate().map(x => x.g.field))].sort(natCmp);
+  pickField.innerHTML = '<option value="">Select a field…</option>' + fields.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+  populateGames();
+}
+function populateGames(){
+  const f = pickField.value;
+  if (!f){ pickGame.innerHTML = '<option value="">Select a field first</option>'; pickGame.disabled = true; return; }
+  const list = gamesForDate().filter(x => x.g.field === f).sort((a,b) => a.g.time.localeCompare(b.g.time));
+  pickGame.disabled = false;
+  pickGame.innerHTML = '<option value="">Select a game…</option>' + list.map(x => {
+    const teams = (x.g.teamA || x.g.teamB) ? ' · ' + [x.g.teamA, x.g.teamB].filter(Boolean).join(' vs ') : '';
+    const div = x.g.division ? ' (' + x.g.division + ')' : '';
+    return `<option value="${x.i}">${esc(fmtTime12(x.g.time) + teams + div)}</option>`;
+  }).join('');
+  lastGameIdx = '';
+}
+function panelFromText(t){
+  const opts = ['Starter Umpire Panel','Local Umpire Panel','Regional Umpire Panel','National Umpire Panel','International Umpire Panel'];
+  const s = String(t || '').toLowerCase();
+  // Check International before National: "international" contains the word "national".
+  const order = [opts[4], opts[3], opts[2], opts[1], opts[0]];
+  const hit = order.find(o => s && s.includes(o.split(' ')[0].toLowerCase()));
+  return hit || opts[0];
+}
+function applyGame(g){
+  document.getElementById('f_field').value = g.field;
+  document.getElementById('f_time').value = g.time;
+  document.getElementById('f_teams').value = [g.teamA, g.teamB].filter(Boolean).join(' vs ');
+  if (g.division) document.getElementById('f_level').value = g.division;
+  if (g.date) document.getElementById('f_date').value = g.date;
+  slots[1] = makeSlot(); slots[2] = makeSlot();
+  slots[1].name = g.u1; slots[1].panel = panelFromText(g.p1); slots[1].schedRating = String(g.p1 || '').trim();
+  slots[2].name = g.u2; slots[2].panel = panelFromText(g.p2); slots[2].schedRating = String(g.p2 || '').trim();
+  activeSlot = 1;
+  loadSlotToFields(1);
+  renderTabs();
+}
+
+pickDate.addEventListener('change', populateFields);
+pickField.addEventListener('change', populateGames);
+pickGame.addEventListener('change', () => {
+  if (pickGame.value === '') return;
+  captureFieldsToSlot(activeSlot);
+  const inProgress = [1,2].some(n => slots[n].ratings.some(r => r > 0));
+  if (inProgress && !confirm("Switching games clears the assessments you haven't saved yet. Continue?")){
+    pickGame.value = lastGameIdx; return;
+  }
+  lastGameIdx = pickGame.value;
+  const g = schedule.games[+pickGame.value];
+  applyGame(g);
+  const names = [g.u1, g.u2].filter(Boolean).join(' & ');
+  document.getElementById('pickNote').textContent = names ? `Loaded: ${names}. You can still edit anything below.` : 'Loaded. No umpires were listed for this game, so enter them below.';
+  showToast('Game loaded');
+});
+
+// Restore a previously uploaded schedule (works with no signal)
+(function restoreSaved(){
+  const saved = loadSavedSchedule();
+  if (saved && saved.games && saved.games.length){
+    schedule = saved;
+    if (saved.event) document.getElementById('s_event_t').value = saved.event;
+    const fields = new Set(saved.games.map(g => g.field)).size;
+    setSchedStatus(`Using saved schedule: ${saved.games.length} games across ${fields} field${fields>1?'s':''}${saved.fileName ? ' (' + saved.fileName + ')' : ''}. Upload a new file to replace it.`, 'ok');
+  }
+})();
 
 renderTabs();
 renderQueue();
