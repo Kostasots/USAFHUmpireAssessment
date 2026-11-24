@@ -350,6 +350,9 @@
   }
   .picker-card{border-color:var(--gold); background:#fffdf4;}
   .picker-card select{margin-bottom:0;}
+  .roster-strip{margin-top:14px; padding:14px; border:1.5px dashed var(--navy); border-radius:12px; background:rgba(255,255,255,.6);}
+  .roster-title{font-weight:700; font-size:14px; color:var(--navy);}
+  .roster-desc{font-size:12.5px; color:var(--muted); margin:4px 0 10px; line-height:1.4;}
   .picker-note{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4;}
 </style>
 </head>
@@ -381,7 +384,7 @@
           <input type="file" id="s_file" accept=".xlsx,.xls,.csv">
         </label>
         <div class="sched-status" id="s_status"></div>
-        <div style="margin-top:8px;"><button type="button" class="link-btn" id="s_template">Download a sample schedule to see the format</button></div>
+        <div style="margin-top:8px;"><button type="button" class="link-btn" id="s_template">Download a sample schedule and roster to see the format</button></div>
         <div class="soon"><span>Connect to Coordinate</span><span class="tag">COMING SOON</span></div>
         <button type="button" class="btn btn-primary start-go" id="go_tournament" disabled>Start Tournament Mode</button>
       </div>
@@ -415,6 +418,16 @@
         <input type="text" id="s_event_g" placeholder="e.g. NCAA Division I regular season">
         <button type="button" class="btn btn-primary start-go" id="go_game">Start Single Game</button>
       </div>
+    </div>
+
+    <div class="roster-strip">
+      <div class="roster-title">Umpire roster (optional, works in every mode)</div>
+      <div class="roster-desc">Upload the list of umpires with their USA FH ratings. When a name is picked or typed, the rating fills in on its own.</div>
+      <label class="file-btn" for="r_file">
+        <span>Upload roster (.xlsx or .csv)</span>
+        <input type="file" id="r_file" accept=".xlsx,.xls,.csv">
+      </label>
+      <div class="sched-status" id="r_status"></div>
     </div>
   </div>
 </div>
@@ -485,7 +498,8 @@
   <div class="card">
     <h2>Umpire</h2>
     <label>Umpire's Name</label>
-    <input type="text" id="f_name" placeholder="Full name">
+    <input type="text" id="f_name" placeholder="Full name" list="rosterList" autocomplete="off">
+    <datalist id="rosterList"></datalist>
     <label>Umpire's Current Panel</label>
     <select id="f_panel">
       <option value="Starter Umpire Panel">Starter Umpire Panel</option>
@@ -494,6 +508,7 @@
       <option value="National Umpire Panel">National Umpire Panel</option>
       <option value="International Umpire Panel">International Umpire Panel</option>
     </select>
+    <div class="picker-note" id="ratingNote" style="display:none;"></div>
   </div>
 
   <div class="card">
@@ -621,7 +636,7 @@ let queue = []; // saved assessments this session
 
 function makeSlot(){
   return {
-    name:'', panel:'Starter Umpire Panel', schedRating:'', ratings:new Array(6).fill(0), comments:'',
+    name:'', panel:'Starter Umpire Panel', schedRating:'', memberId:'', ratings:new Array(6).fill(0), comments:'',
     hasPrivate:false, privateNotes:'',
     hasAreas:false, tallies:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0}, tapLog:[]
   };
@@ -983,6 +998,23 @@ function captureFieldsToSlot(slot){
   // s.ratings, s.tallies, s.tapLog are already up to date — live references
 }
 
+function updateRatingNote(){
+  const s = slots[activeSlot], el = document.getElementById('ratingNote');
+  if (s && s.schedRating){ el.style.display = 'block'; el.textContent = 'USA FH rating on file: ' + s.schedRating + (s.memberId ? '  ·  Membership ID ' + s.memberId : ''); }
+  else { el.style.display = 'none'; el.textContent = ''; }
+}
+document.getElementById('f_name').addEventListener('change', () => {
+  const s = slots[activeSlot];
+  const person = lookupRoster(document.getElementById('f_name').value);
+  if (person){
+    s.schedRating = person.rating; s.memberId = person.id;
+    s.panel = panelFromText(person.rating);
+    document.getElementById('f_panel').value = s.panel;
+  } else { s.schedRating = ''; s.memberId = ''; }
+  updateRatingNote();
+});
+document.getElementById('f_panel').addEventListener('change', () => { captureFieldsToSlot(activeSlot); updateRatingNote(); });
+
 function loadSlotToFields(slot){
   const s = slots[slot];
   document.getElementById('f_name').value = s.name;
@@ -1007,6 +1039,7 @@ function loadSlotToFields(slot){
     }
   });
   updateScore();
+  updateRatingNote();
 }
 
 function switchSlot(n){
@@ -1071,6 +1104,7 @@ document.getElementById('saveBtn').addEventListener('click', () => {
     name: s.name,
     panel: s.panel,
     rating: s.schedRating || s.panel,
+    memberId: s.memberId || '',
     slot: activeSlot,
     submitted: false,
     assessor: document.getElementById('f_assessor').value.trim(),
@@ -1140,11 +1174,11 @@ function sheetName(name, used){
 }
 
 function buildSummarySheet(wb, entries){
-  const head = ['Event','Date','Time','Field','Division','Teams','Umpire Manager','Umpire','Umpire Slot','USA FH Rating'].concat(CRITERIA).concat(['Performance Mark (out of 5)','Performance Feedback','Comments to Umpire','Private Notes (Not Shared with Umpire)','Areas of Interest (zone tally)']);
+  const head = ['Event','Date','Time','Field','Division','Teams','Umpire Manager','Umpire','Umpire Slot','USA FH Rating'].concat(CRITERIA).concat(['Performance Mark (out of 5)','Performance Feedback','Comments to Umpire','Private Notes (Not Shared with Umpire)','Areas of Interest (zone tally)','Membership ID']);
   const rows = [head].concat(entries.map(en => {
     const tally = Object.keys(en.tallies || {}).filter(k => en.tallies[k] > 0).map(k => `Zone ${k}: ${en.tallies[k]}`).join('; ');
     return [en.event, en.date, fmtTime12(en.time), en.field, en.level, en.teams, en.assessor, en.name, 'Umpire ' + (en.slot || ''), en.rating || en.panel]
-      .concat(en.ratings).concat([Number(en.mark.toFixed(2)), en.feedback, en.comments, en.hasPrivate ? en.privateNotes : '', tally]);
+      .concat(en.ratings).concat([Number(en.mark.toFixed(2)), en.feedback, en.comments, en.hasPrivate ? en.privateNotes : '', tally, en.memberId || '']);
   }));
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const markCol = 10 + CRITERIA.length;
@@ -1245,6 +1279,7 @@ function buildWorkbook(entries, summary){
     rows[3][0] = "Umpire's Name: ";      rows[3][1] = en.name;
     rows[4][0] = "USA FH Rating (Current Panel): "; rows[4][1] = en.rating || en.panel;
     rows[5][0] = "Assessor\u2019s Name: ";   rows[5][1] = en.assessor;
+    if (en.memberId){ rows[6][0] = "Membership ID: "; rows[6][1] = en.memberId; }
     rows[7][0] = "Event: ";              rows[7][1] = en.event;
     rows[8][0] = "Level / Age Division: "; rows[8][1] = en.level;
     rows[9][0] = "Teams:";               rows[9][1] = en.teams;
@@ -1403,6 +1438,49 @@ function parseScheduleRows(rows){
   if (!games.length) return { games:[], error:"Found the headers but no usable game rows (each needs a Field and a Time)." };
   return { games, error:null };
 }
+
+const ROSTER_ALIASES = {
+  name:  ['name','umpire','umpirename','fullname','official','officialname'],
+  first: ['firstname','first','givenname'],
+  last:  ['lastname','last','surname','familyname'],
+  rating:['rating','usafhrating','usfhrating','currentrating','umpirerating','panel','currentpanel','level'],
+  id:    ['membershipid','memberid','usafhid','membership','membernumber','id']
+};
+function normName(s){
+  s = String(s == null ? '' : s).trim().toLowerCase();
+  if (s.indexOf(',') > -1){ const parts = s.split(','); s = parts.slice(1).join(' ') + ' ' + parts[0]; }   // "Last, First"
+  return s.replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
+function nameKeys(s){
+  const n = normName(s); if (!n) return [];
+  return [n, n.split(' ').sort().join(' ')];     // second key makes "Smith Jane" match "Jane Smith"
+}
+function parseRosterRows(rows){
+  let hdr = -1, map = {};
+  for (let r = 0; r < Math.min(rows.length, 15); r++){
+    const m = {};
+    (rows[r] || []).forEach((cell, c) => {
+      const k = normKey(cell); if (!k) return;
+      for (const f in ROSTER_ALIASES){ if (m[f] === undefined && ROSTER_ALIASES[f].indexOf(k) > -1) m[f] = c; }
+    });
+    if (m.rating !== undefined && (m.name !== undefined || m.last !== undefined)){ hdr = r; map = m; break; }
+  }
+  if (hdr < 0) return { people:[], error:"Couldn't find a roster. It needs a name column (Name, or First Name and Last Name) and a Rating column." };
+  const people = [], seen = {}; let dupes = 0;
+  for (let r = hdr + 1; r < rows.length; r++){
+    const row = rows[r] || [];
+    const cell = f => map[f] === undefined ? '' : String(row[map[f]] == null ? '' : row[map[f]]).trim();
+    let name = cell('name');
+    if (!name){ name = [cell('first'), cell('last')].filter(Boolean).join(' '); }
+    if (!name) continue;
+    const key = normName(name);
+    if (seen[key]){ dupes++; continue; }
+    seen[key] = true;
+    people.push({ name, rating: cell('rating'), id: cell('id') });
+  }
+  if (!people.length) return { people:[], error:"Found the roster headings but no umpire rows underneath." };
+  return { people, error:null, dupes };
+}
 //SCHED-PURE-END
 
 // ---------- OPENING SCREEN + GAME PICKER ----------
@@ -1431,28 +1509,75 @@ document.querySelectorAll('.mode-top').forEach(top => {
   });
 });
 
-document.getElementById('s_file').addEventListener('change', (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
+// ---------- ROSTER ----------
+const ROSTER_KEY = 'umpireAssess.roster.v1';
+let roster = null;            // {people:[{name,rating,id}], fileName, loadedAt}
+let rosterIndex = {};
+function buildRosterIndex(){
+  rosterIndex = {};
+  if (!roster) return;
+  roster.people.forEach(p => nameKeys(p.name).forEach(k => { if (!rosterIndex[k]) rosterIndex[k] = p; }));
+  const dl = document.getElementById('rosterList');
+  dl.innerHTML = roster.people.map(p => `<option value="${esc(p.name)}"></option>`).join('');
+}
+function lookupRoster(name){
+  const keys = nameKeys(name);
+  for (const k of keys){ if (rosterIndex[k]) return rosterIndex[k]; }
+  return null;
+}
+function saveRoster(){ try { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); } catch(e){} }
+function loadSavedRoster(){ try { const raw = localStorage.getItem(ROSTER_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+function setRosterStatus(msg, kind){
+  const el = document.getElementById('r_status');
+  el.textContent = msg; el.className = 'sched-status' + (kind ? ' ' + kind : '');
+}
+function applyRoster(res, fileName){
+  roster = { people: res.people, fileName, loadedAt: new Date().toISOString() };
+  saveRoster(); buildRosterIndex();
+  setRosterStatus(`Roster loaded: ${res.people.length} umpires${res.dupes ? ' (' + res.dupes + ' duplicate name' + (res.dupes>1?'s':'') + ' skipped)' : ''} from ${fileName}.`, 'ok');
+}
+
+// A workbook can hold the schedule, the roster, or both on separate tabs.
+function ingestWorkbook(file, which){
   const reader = new FileReader();
   reader.onload = () => {
     try {
       const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', raw:true }); // raw:true keeps CSV dates as typed (no timezone shifting)
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' });
-      const res = parseScheduleRows(rows);
-      if (res.error){ schedule = null; setSchedStatus(res.error, 'err'); return; }
-      schedule = { event: document.getElementById('s_event_t').value.trim(), games: res.games, loadedAt: new Date().toISOString(), fileName: file.name };
+      let sched = null, ros = null, schedErr = '', rosErr = '';
+      for (const name of wb.SheetNames){
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, raw:false, defval:'' });
+        if (which !== 'roster' && !sched){
+          const r = parseScheduleRows(rows);
+          if (!r.error){ sched = r; continue; }
+          schedErr = schedErr || r.error;
+        }
+        if (!ros){
+          const r2 = parseRosterRows(rows);
+          if (!r2.error) ros = r2; else rosErr = rosErr || r2.error;
+        }
+      }
+      if (which === 'roster'){
+        if (!ros){ setRosterStatus(rosErr, 'err'); return; }
+        applyRoster(ros, file.name); return;
+      }
+      if (ros) applyRoster(ros, file.name);
+      if (!sched){
+        if (ros){ setSchedStatus('That file only had a roster, which is loaded. Upload the schedule to continue.', 'err'); return; }
+        schedule = null; setSchedStatus(schedErr, 'err'); return;
+      }
+      schedule = { event: document.getElementById('s_event_t').value.trim(), games: sched.games, loadedAt: new Date().toISOString(), fileName: file.name };
       saveSchedule();
-      const fields = new Set(res.games.map(g => g.field)).size;
-      setSchedStatus(`Loaded ${res.games.length} games across ${fields} field${fields>1?'s':''} from ${file.name}.`, 'ok');
+      const fields = new Set(sched.games.map(g => g.field)).size;
+      setSchedStatus(`Loaded ${sched.games.length} games across ${fields} field${fields>1?'s':''} from ${file.name}${ros ? ', plus a roster of ' + ros.people.length + ' umpires' : ''}.`, 'ok');
     } catch(err){
-      schedule = null;
-      setSchedStatus("That file couldn't be read. Try saving it as .xlsx or .csv and uploading again.", 'err');
+      if (which === 'roster') setRosterStatus("That file couldn't be read. Try saving it as .xlsx or .csv and uploading again.", 'err');
+      else { schedule = null; setSchedStatus("That file couldn't be read. Try saving it as .xlsx or .csv and uploading again.", 'err'); }
     }
   };
   reader.readAsArrayBuffer(file);
-});
+}
+document.getElementById('s_file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) ingestWorkbook(f, 'schedule'); });
+document.getElementById('r_file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) ingestWorkbook(f, 'roster'); });
 
 document.getElementById('s_template').addEventListener('click', () => {
   const rows = [
@@ -1467,6 +1592,11 @@ document.getElementById('s_template').addEventListener('click', () => {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:16},{wch:10},{wch:16},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws, 'Schedule');
+  const rosterRows = [['Name','USA FH Rating','Membership ID']];
+  'ABCDEFGH'.split('').forEach((l, i) => rosterRows.push(['Test Umpire ' + l, ['Regional','Local','National','Starter'][i % 4], 'TEST-00' + (i + 1)]));
+  const rws = XLSX.utils.aoa_to_sheet(rosterRows);
+  rws['!cols'] = [{wch:20},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, rws, 'Roster');
   XLSX.writeFile(wb, 'Sample_Tournament_Schedule.xlsx');
 });
 
@@ -1551,8 +1681,12 @@ function applyGame(g){
   if (g.division) document.getElementById('f_level').value = g.division;
   if (g.date) document.getElementById('f_date').value = g.date;
   slots[1] = makeSlot(); slots[2] = makeSlot();
-  slots[1].name = g.u1; slots[1].panel = panelFromText(g.p1); slots[1].schedRating = String(g.p1 || '').trim();
-  slots[2].name = g.u2; slots[2].panel = panelFromText(g.p2); slots[2].schedRating = String(g.p2 || '').trim();
+  [[1, g.u1, g.p1], [2, g.u2, g.p2]].forEach(([n, nm, pr]) => {
+    const person = lookupRoster(nm);
+    const rating = String(pr || '').trim() || (person ? person.rating : '');   // rating on the schedule wins; otherwise the roster supplies it
+    slots[n].name = nm; slots[n].schedRating = rating; slots[n].panel = panelFromText(rating);
+    slots[n].memberId = person ? person.id : '';
+  });
   activeSlot = 1;
   loadSlotToFields(1);
   renderTabs();
@@ -1576,6 +1710,10 @@ pickGame.addEventListener('change', () => {
 });
 
 // Restore a previously uploaded schedule (works with no signal)
+(function restoreRoster(){
+  const r = loadSavedRoster();
+  if (r && r.people && r.people.length){ roster = r; buildRosterIndex(); setRosterStatus(`Using saved roster: ${r.people.length} umpires${r.fileName ? ' (' + r.fileName + ')' : ''}. Upload a new file to replace it.`, 'ok'); }
+})();
 (function restoreSaved(){
   const saved = loadSavedSchedule();
   if (saved && saved.games && saved.games.length){
