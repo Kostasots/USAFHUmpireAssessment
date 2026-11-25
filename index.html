@@ -569,6 +569,7 @@
   <div class="card">
     <h2>This Session</h2>
     <div id="queue"></div>
+    <div style="margin-top:10px;"><button type="button" class="link-btn" id="clearSessionBtn">Clear all saved work on this device</button></div>
   </div>
 
 </div>
@@ -1485,6 +1486,7 @@ function parseRosterRows(rows){
 
 // ---------- OPENING SCREEN + GAME PICKER ----------
 let appMode = null;           // 'tournament' | 'event' | 'game'
+let currentEventName = '';
 let schedule = null;          // {event, games:[...]}
 let lastGameIdx = '';
 const SCHED_KEY = 'umpireAssess.schedule.v1';
@@ -1609,6 +1611,7 @@ function relabelFieldInput(){
 
 function startMode(mode, eventName){
   appMode = mode;
+  currentEventName = eventName || '';
   const evInput = document.getElementById('f_event');
   if (eventName) evInput.value = eventName;
   const names = { tournament:'Tournament', event:'Event', game:'Single game' };
@@ -1727,6 +1730,64 @@ pickGame.addEventListener('change', () => {
 renderTabs();
 renderQueue();
 updateScore();
+
+// ---------- AUTOSAVE: a game in progress and everything saved this session survive sleep, app-switching and reloads ----------
+const DRAFT_KEY = 'umpireAssess.draft.v1';
+let restoring = false;
+function saveDraft(){
+  if (restoring || !appMode) return;
+  try {
+    captureFieldsToSlot(activeSlot);
+    const g = id => document.getElementById(id).value;
+    const gi = pickGame.value !== '' && schedule && schedule.games[+pickGame.value];
+    const draft = {
+      v:1, savedAt: Date.now(), appMode, eventName: currentEventName, activeSlot, slots, queue,
+      fields: { assessor:g('f_assessor'), event:g('f_event'), level:g('f_level'), teams:g('f_teams'), date:g('f_date'), field:g('f_field'), time:g('f_time') },
+      pick: { date:pickDate.value, field:pickField.value, sig: gi ? [gi.date || gi.dateRaw, gi.field, gi.time].join('|') : '' }
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch(e){}
+}
+let draftTimer = null;
+function queueDraftSave(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 350); }
+['input','change','click'].forEach(ev => document.addEventListener(ev, queueDraftSave, true));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveDraft(); });
+window.addEventListener('pagehide', saveDraft);
+
+function restoreDraft(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(e){ return; }
+  if (!d || d.v !== 1 || !d.appMode || !d.slots) return;
+  restoring = true;
+  try {
+    slots = { 1: Object.assign(makeSlot(), d.slots[1] || {}), 2: Object.assign(makeSlot(), d.slots[2] || {}) };
+    activeSlot = d.activeSlot === 2 ? 2 : 1;
+    queue = Array.isArray(d.queue) ? d.queue : [];
+    startMode(d.appMode, d.eventName);
+    const f = d.fields || {};
+    [['f_assessor','assessor'],['f_event','event'],['f_level','level'],['f_teams','teams'],['f_date','date'],['f_field','field'],['f_time','time']]
+      .forEach(([id, k]) => { if (f[k] != null) document.getElementById(id).value = f[k]; });
+    if (d.appMode === 'tournament' && schedule && d.pick){
+      if (d.pick.date){ pickDate.value = d.pick.date; populateFields(); }
+      if (d.pick.field){ pickField.value = d.pick.field; populateGames(); }
+      if (d.pick.sig){
+        const idx = schedule.games.findIndex(g => [g.date || g.dateRaw, g.field, g.time].join('|') === d.pick.sig);
+        if (idx > -1){ pickGame.value = String(idx); lastGameIdx = String(idx); }
+      }
+    }
+    loadSlotToFields(activeSlot);
+    renderTabs(); renderQueue();
+  } finally { restoring = false; }
+  const anyWork = queue.length || [1,2].some(n => { const x = slots[n]; return x.name || x.comments || x.privateNotes || x.ratings.some(r => r > 0); });
+  if (anyWork) showToast('Picked up where you left off');
+}
+document.getElementById('clearSessionBtn').addEventListener('click', () => {
+  if (!confirm('Clear everything saved on this device: the game in progress and the list of saved assessments? Anything already sent to Brian is not affected.')) return;
+  queue = []; slots = { 1: makeSlot(), 2: makeSlot() }; activeSlot = 1;
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e){}
+  loadSlotToFields(1); renderTabs(); renderQueue(); showToast('Cleared');
+});
+restoreDraft();
 </script>
 
 </body>
